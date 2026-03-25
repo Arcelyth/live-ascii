@@ -1,3 +1,7 @@
+use live_ascii::ffi::*;
+
 fn main() {
-    println!("Hello, world!");
+    let version = csm_get_version();
+    println!("{}", version);
 }
+
