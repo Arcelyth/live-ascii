@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::error::Error;
+use std::ffi::CStr;
 use std::io::{Write, stdout};
 use std::time::Duration;
 use std::time::Instant;
@@ -16,12 +17,13 @@ use image::{DynamicImage, GenericImageView};
 use crate::context::*;
 use crate::ffi::*;
 use crate::geometry::*;
+use crate::motion::*;
 
 const ASCII_CHARS: &[char] = &[' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
 
 pub struct Renderer {
     pub count: usize,
-    model: *mut CsmModel,
+    pub model: *mut CsmModel,
     constant_flags: *const u8,
     texture_indices: *const i32,
     vertex_counts: *const i32,
@@ -62,11 +64,16 @@ impl Renderer {
         }
     }
 
-    pub fn render(&mut self, context: &mut Context) -> Result<(), Box<dyn Error>> {
+    pub fn render(
+        &mut self,
+        context: &mut Context,
+        mp: &mut Option<MotionPlayer>,
+    ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
         let fps = 120.0;
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
+        let mut last_frame = Instant::now();
         loop {
             let frame_start = Instant::now();
 
@@ -87,6 +94,12 @@ impl Renderer {
             context.update()?;
             context.clear();
 
+            let delta_time = last_frame.elapsed().as_secs_f32();
+            last_frame = Instant::now();
+            if let Some(mp) = mp {
+                mp.update(delta_time, self);
+            }
+
             // manipulation of model
             let t = self.start_time.elapsed().as_secs_f32();
             unsafe {
@@ -102,18 +115,18 @@ impl Renderer {
                 let part_ids = csmGetPartIds(self.model);
                 let part_opacities = csmGetPartOpacities(self.model);
 
-                for i in 0..p_count {
-                    let max_v = *p_max_vs.add(i as usize);
-                    let min_v = *p_min_vs.add(i as usize);
-                    let range = max_v - min_v;
-                    let mid = min_v + range / 2.0;
-
-                    let phase = i as f32 * 0.3;
-
-                    let current_val = mid + (range / 2.0) * (t * 2.0 + phase).sin();
-
-                    *p_vs.add(i as usize) = current_val;
-                }
+                //                for i in 0..p_count {
+                //                    let max_v = *p_max_vs.add(i as usize);
+                //                    let min_v = *p_min_vs.add(i as usize);
+                //                    let range = max_v - min_v;
+                //                    let mid = min_v + range / 2.0;
+                //
+                //                    let phase = i as f32 * 0.3;
+                //
+                //                    let current_val = mid + (range / 2.0) * (t * 2.0 + phase).sin();
+                //
+                //                    *p_vs.add(i as usize) = current_val;
+                //                }
             }
 
             // applying manioulation to Drawable
@@ -277,5 +290,29 @@ impl Renderer {
         y *= height as f32;
 
         Vec3 { x, y, z: 0.0 }
+    }
+
+    pub fn find_param_index(&self, target_id: &str) -> Option<usize> {
+        unsafe {
+            let count = csmGetParameterCount(self.model) as usize;
+            let ids_ptr = csmGetParameterIds(self.model);
+            if ids_ptr.is_null() {
+                return None;
+            }
+
+            for i in 0..count {
+                let id_ptr = *ids_ptr.add(i);
+
+                if !id_ptr.is_null() {
+                    let c_str = CStr::from_ptr(id_ptr);
+                    if let Ok(id_str) = c_str.to_str() {
+                        if id_str == target_id {
+                            return Some(i);
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 }

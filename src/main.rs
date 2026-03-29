@@ -8,13 +8,15 @@ use live_ascii::context::*;
 use live_ascii::ffi::*;
 use live_ascii::renderer::*;
 use live_ascii::utils::*;
+use live_ascii::motion::*;
 
 use clap::Parser;
 
 #[derive(Parser, Debug)]
 struct Args {
     path: String,    // moc3 file path
-    texture: String, // png file path
+    texture: String, // texture dictionary path
+    motion: Option<String> // motion3.json file
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -69,8 +71,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // initialize terminal
     let mut context = Context::new(false);
-
-    renderer.render(&mut context)?;
+    
+    let mut mp = if let Some(m) = args.motion {
+        Some(MotionPlayer::new(&m)?)
+    } else {
+        None
+    };
+     
+    renderer.render(&mut context, &mut mp)?;
 
     Ok(())
 }
