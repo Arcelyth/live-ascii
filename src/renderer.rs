@@ -31,7 +31,7 @@ pub struct Renderer {
     indices: *const *const u16,
     multiply_colors: *const CsmVector4,
     screen_colors: *const CsmVector4,
-    texture: DynamicImage,
+    textures: Vec<DynamicImage>,
     offset_x: f32,
     offset_y: f32,
     scale: f32,
@@ -39,7 +39,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(model_ptr: *mut CsmModel, texture: DynamicImage) -> Self {
+    pub fn new(model_ptr: *mut CsmModel, textures: Vec<DynamicImage>) -> Self {
         unsafe {
             Self {
                 model: model_ptr,
@@ -53,7 +53,7 @@ impl Renderer {
                 indices: csmGetDrawableIndices(model_ptr),
                 multiply_colors: csmGetDrawableMultiplyColors(model_ptr),
                 screen_colors: csmGetDrawableScreenColors(model_ptr),
-                texture,
+                textures,
                 offset_x: 0.,
                 offset_y: 0.,
                 scale: 1.,
@@ -67,8 +67,6 @@ impl Renderer {
         execute!(stdout(), cursor::Hide)?;
         let fps = 120.0;
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
-        let (img_w, img_h) = self.texture.dimensions();
-        let rgba_img = self.texture.to_rgba8();
         loop {
             let frame_start = Instant::now();
 
@@ -155,6 +153,15 @@ impl Renderer {
                     if opacity <= 0.0 {
                         continue;
                     }
+                    // get texture
+                    let tex_idx = *self.texture_indices.add(drawable_idx) as usize;
+                    if tex_idx >= self.textures.len() {
+                        continue;
+                    }
+                    let current_texture = &self.textures[tex_idx];
+                    let img_w = current_texture.width();
+                    let img_h = current_texture.height();
+
                     let index_count = *self.index_counts.add(drawable_idx) as usize;
                     let indices_ptr = *self.indices.add(drawable_idx);
                     let vertices_ptr = *vt_positions.add(drawable_idx);
@@ -217,7 +224,7 @@ impl Renderer {
                                     let tex_y = ((1.0 - v) * (img_h as f32 - 1.0)) as u32;
 
                                     if tex_x < img_w && tex_y < img_h {
-                                        let pixel = rgba_img.get_pixel(tex_x, tex_y);
+                                        let pixel = current_texture.get_pixel(tex_x, tex_y);
                                         let (r, g, b, a) = (pixel[0], pixel[1], pixel[2], pixel[3]);
                                         if a > 0 {
                                             let final_alpha = (a as f32 / 255.0) * opacity;
