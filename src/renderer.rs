@@ -84,13 +84,39 @@ impl Renderer {
                         KeyCode::Char('-') => self.scale *= 0.9,
                         _ => {}
                     }
-
                 }
             }
             context.update()?;
             context.clear();
 
-            // TODO: manipulation of model
+            // manipulation of model
+            let t = self.start_time.elapsed().as_secs_f32();
+            unsafe {
+                // updating parameter and parts opacity
+                let p_count = csmGetParameterCount(self.model);
+                let p_ids = csmGetParameterIds(self.model);
+                let p_min_vs = csmGetParameterMinimumValues(self.model);
+                let p_max_vs = csmGetParameterMaximumValues(self.model);
+                let p_default_vs = csmGetParameterDefaultValues(self.model);
+                let p_vs = csmGetParameterValues(self.model);
+
+                let part_count = csmGetPartCount(self.model);
+                let part_ids = csmGetPartIds(self.model);
+                let part_opacities = csmGetPartOpacities(self.model);
+
+                for i in 0..p_count {
+                    let max_v = *p_max_vs.add(i as usize);
+                    let min_v = *p_min_vs.add(i as usize);
+                    let range = max_v - min_v;
+                    let mid = min_v + range / 2.0;
+
+                    let phase = i as f32 * 0.3;
+
+                    let current_val = mid + (range / 2.0) * (t * 2.0 + phase).sin();
+
+                    *p_vs.add(i as usize) = current_val;
+                }
+            }
 
             // applying manioulation to Drawable
             unsafe {
@@ -233,12 +259,7 @@ impl Renderer {
         Ok(())
     }
 
-    fn transform_to_screen(
-        &self, 
-        pos: CsmVector2,
-        width: u16,
-        height: u16,
-    ) -> Vec3 {
+    fn transform_to_screen(&self, pos: CsmVector2, width: u16, height: u16) -> Vec3 {
         let transformed_x = pos.x * self.scale + self.offset_x;
         let transformed_y = pos.y * self.scale + self.offset_y;
 
