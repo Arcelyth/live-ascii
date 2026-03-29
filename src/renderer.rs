@@ -32,6 +32,10 @@ pub struct Renderer {
     multiply_colors: *const CsmVector4,
     screen_colors: *const CsmVector4,
     texture: DynamicImage,
+    offset_x: f32,
+    offset_y: f32,
+    scale: f32,
+    start_time: Instant,
 }
 
 impl Renderer {
@@ -50,6 +54,10 @@ impl Renderer {
                 multiply_colors: csmGetDrawableMultiplyColors(model_ptr),
                 screen_colors: csmGetDrawableScreenColors(model_ptr),
                 texture,
+                offset_x: 0.,
+                offset_y: 0.,
+                scale: 1.,
+                start_time: Instant::now(),
             }
         }
     }
@@ -66,9 +74,17 @@ impl Renderer {
 
             if event::poll(Duration::from_millis(1))? {
                 if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                    if code == KeyCode::Char('q') {
-                        break;
+                    match code {
+                        KeyCode::Char('q') => break,
+                        KeyCode::Up => self.offset_y -= 0.1,
+                        KeyCode::Down => self.offset_y += 0.1,
+                        KeyCode::Left => self.offset_x -= 0.1,
+                        KeyCode::Right => self.offset_x += 0.1,
+                        KeyCode::Char('=') | KeyCode::Char('+') => self.scale *= 1.1,
+                        KeyCode::Char('-') => self.scale *= 0.9,
+                        _ => {}
                     }
+
                 }
             }
             context.update()?;
@@ -123,24 +139,24 @@ impl Renderer {
                         let i1 = *indices_ptr.add(i + 1) as usize;
                         let i2 = *indices_ptr.add(i + 2) as usize;
 
-                        let v0 = transform_to_screen(
+                        let v0 = self.transform_to_screen(
                             *vertices_ptr.add(i0),
                             context.width,
                             context.height,
                         );
-                        let v1 = transform_to_screen(
+                        let v1 = self.transform_to_screen(
                             *vertices_ptr.add(i1),
                             context.width,
                             context.height,
                         );
-                        let v2 = transform_to_screen(
+                        let v2 = self.transform_to_screen(
                             *vertices_ptr.add(i2),
                             context.width,
                             context.height,
                         );
 
                         let triangle = Triangle::new(v0, v1, v2);
-                        
+
                         // get bounding box
                         let bbox = triangle.get_box();
                         let min_x = bbox.minx.max(0.0) as u16;
@@ -216,14 +232,22 @@ impl Renderer {
 
         Ok(())
     }
-}
 
-fn transform_to_screen(pos: CsmVector2, width: u16, height: u16) -> Vec3 {
-    let mut x = (pos.x + 1.0) / 2.0;
-    let mut y = 1.0 - (pos.y + 1.0) / 2.0;
+    fn transform_to_screen(
+        &self, 
+        pos: CsmVector2,
+        width: u16,
+        height: u16,
+    ) -> Vec3 {
+        let transformed_x = pos.x * self.scale + self.offset_x;
+        let transformed_y = pos.y * self.scale + self.offset_y;
 
-    x *= width as f32;
-    y *= height as f32;
+        let mut x = (transformed_x + 1.0) / 2.0;
+        let mut y = 1.0 - (transformed_y + 1.0) / 2.0;
 
-    Vec3 { x, y, z: 0.0 }
+        x *= width as f32;
+        y *= height as f32;
+
+        Vec3 { x, y, z: 0.0 }
+    }
 }
