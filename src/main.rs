@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::ffi::c_void;
 use std::fs::{self, File};
-use std::io::{Read};
+use std::io::Read;
 use std::ptr;
 
 use live_ascii::context::*;
@@ -47,15 +47,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // load texture
+    let mut png_files = vec![];
     let mut textures = vec![];
     for entry in fs::read_dir(args.texture)? {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png") {
-            let texture = image::open(path)?.to_rgba8();
-            textures.push(image::DynamicImage::ImageRgba8(texture));
+            png_files.push(path);
         }
+    }
+
+    sort_path(&mut png_files);
+
+    for file in png_files {
+        let texture = image::open(file)?.to_rgba8();
+        textures.push(image::DynamicImage::ImageRgba8(texture));
     }
 
     let mut renderer = Renderer::new(model_ptr, textures);
@@ -64,8 +71,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut context = Context::new(false);
 
     renderer.render(&mut context)?;
-    
+
     Ok(())
 }
-
-
