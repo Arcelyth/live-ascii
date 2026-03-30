@@ -5,22 +5,43 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct Model3 {
+    pub version: usize,
+    #[serde(default)]
+    pub file_references: FileRef,
+    #[serde(default)]
+    pub groups: Vec<Group>,
+    #[serde(default)]
+    pub hit_areas: Vec<HitArea>,
+    #[serde(default)]
+    pub layout: Option<Layout>,
+}
+
+impl Model3 {
+    pub fn new(path: &str) -> Result<Self, Box<dyn Error>> {
+        let data = fs::read_to_string(path)?;
+        Ok(serde_json::from_str(&data)?)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "PascalCase")]
 pub struct FileRef {
-    moc: Option<PathBuf>,
+    pub moc: Option<PathBuf>,
     #[serde(default)]
-    textures: Vec<PathBuf>,
+    pub textures: Vec<PathBuf>,
     #[serde(default)]
-    physics: Option<PathBuf>,
+    pub physics: Option<PathBuf>,
     #[serde(default)]
-    display_info: Option<PathBuf>,
+    pub display_info: Option<PathBuf>,
     #[serde(default)]
-    pose: Option<PathBuf>,
+    pub pose: Option<PathBuf>,
     #[serde(default)]
-    expressions: Vec<Expression>,
+    pub expressions: Vec<Expression>,
     #[serde(default)]
-    motions: HashMap<String, Vec<MotionRef>>,
+    pub motions: HashMap<String, Vec<MotionRef>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialOrd, PartialEq)]
@@ -42,7 +63,7 @@ pub enum Target {
 #[serde(rename_all = "PascalCase")]
 pub struct Expression {
     pub name: String,
-    pub file: PathBuf,
+    pub file: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialOrd, PartialEq)]
@@ -78,26 +99,7 @@ pub struct Layout {
     height: f32,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(rename_all = "PascalCase")]
-pub struct Model3 {
-    version: usize,
-    #[serde(default)]
-    file_references: FileRef,
-    #[serde(default)]
-    groups: Vec<Group>,
-    #[serde(default)]
-    hit_areas: Vec<HitArea>,
-    #[serde(default)]
-    layout: Option<Layout>,
-}
 
-impl Model3 {
-    pub fn new(path: &str) -> Result<Self, Box<dyn Error>> {
-        let data = fs::read_to_string(path)?;
-        Ok(serde_json::from_str(&data)?)
-    }
-}
 
 #[cfg(test)]
 mod tests {

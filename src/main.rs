@@ -2,31 +2,40 @@ use std::error::Error;
 use std::ffi::c_void;
 use std::fs::{self, File};
 use std::io::Read;
+use std::path::Path;
 use std::ptr;
 
 use live_ascii::context::*;
+use live_ascii::exp::*;
 use live_ascii::ffi::*;
+use live_ascii::model::Model3;
+use live_ascii::motion::*;
 use live_ascii::renderer::*;
 use live_ascii::utils::*;
-use live_ascii::motion::*;
-use live_ascii::exp::*;
 
 use clap::Parser;
 
 #[derive(Parser, Debug)]
 struct Args {
-    path: String,    // moc3 file path
-    texture: String, // texture dictionary path
-    motion: Option<String>, // motion3.json file
-    exp: Option<String> // exp3.json file
+    model3: String, // model3.json file
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
+    let model3 = Model3::new(&args.model3)?;
+    let model3_path = Path::new(&args.model3).canonicalize()?;
+    let base_dir = model3_path.parent().unwrap();
 
-    let mut file = File::open(&args.path)?;
+    let file_refs = &model3.file_references;
+
     let mut moc_data = Vec::new();
-    file.read_to_end(&mut moc_data)?;
+    if let Some(moc_relative_path) = &file_refs.moc {
+        let full_moc_path = base_dir.join(moc_relative_path);
+        let mut file = File::open(&full_moc_path)?;
+        file.read_to_end(&mut moc_data)?;
+    } else {
+        panic!("MOC path not found in JSON");
+    }
 
     // loading moc3
     let moc_mem = unsafe {
@@ -51,44 +60,41 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // load texture
-    let mut png_files = vec![];
     let mut textures = vec![];
-    for entry in fs::read_dir(args.texture)? {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png") {
-            png_files.push(path);
+    for relative_path in &file_refs.textures {
+        let full_path = base_dir.join(relative_path);
+        if full_path.is_file() {
+            let texture = image::open(&full_path)?.to_rgba8();
+            textures.push(image::DynamicImage::ImageRgba8(texture));
         }
-    }
-
-    sort_path(&mut png_files);
-
-    for file in png_files {
-        let texture = image::open(file)?.to_rgba8();
-        textures.push(image::DynamicImage::ImageRgba8(texture));
     }
 
     let mut renderer = Renderer::new(model_ptr, textures);
 
     // initialize terminal
     let mut context = Context::new(false);
-   
+
     // initialize motionplayer
-    let mut mp = if let Some(m) = args.motion {
-        Some(MotionPlayer::new(&m)?)
+    // TODO: handle more motions
+    let motions = &file_refs.motions;
+    let idle_motions = motions.get("Idle");
+
+    let mut mp = if let Some(m) = idle_motions {
+        let full_motion_path = base_dir.join(&m[0].file);
+        Some(MotionPlayer::new(full_motion_path.to_str().unwrap())?)
     } else {
         None
     };
 
     // initialize expression
-    let mut exp = if let Some(e) = args.exp{
-        Some(Expression::new(&e)?)
-    } else {
+    let expressions = &file_refs.expressions;
+    let mut exp = if expressions.is_empty() {
         None
+    } else {
+        let full_exp_path = base_dir.join(&expressions[0].file);
+        Some(Expression::new(full_exp_path.to_str().unwrap())?)
     };
 
-     
     renderer.render(&mut context, &mut mp, &mut exp)?;
 
     Ok(())
