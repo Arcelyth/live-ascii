@@ -15,6 +15,7 @@ use crossterm::{
 use image::{DynamicImage, GenericImageView};
 
 use crate::context::*;
+use crate::exp::*;
 use crate::ffi::*;
 use crate::geometry::*;
 use crate::motion::*;
@@ -38,6 +39,18 @@ pub struct Renderer {
     offset_y: f32,
     scale: f32,
     start_time: Instant,
+
+    // parameter field
+    pub param_count: usize,
+    pub param_ids: *const *const i8,
+    pub param_values: *mut f32,
+    pub param_max_vs: *const f32,
+    pub param_min_vs: *const f32,
+    pub param_default_vs: *const f32,
+    // parts opacity
+    pub part_count: i32,
+    pub part_ids: *const *const i8,
+    pub part_opacities: *mut f32,
 }
 
 impl Renderer {
@@ -60,6 +73,15 @@ impl Renderer {
                 offset_y: 0.,
                 scale: 1.,
                 start_time: Instant::now(),
+                param_max_vs: csmGetParameterMaximumValues(model_ptr),
+                param_min_vs: csmGetParameterMinimumValues(model_ptr),
+                param_count: csmGetParameterCount(model_ptr) as usize,
+                param_ids: csmGetParameterIds(model_ptr),
+                param_values: csmGetParameterValues(model_ptr),
+                param_default_vs: csmGetParameterDefaultValues(model_ptr),
+                part_count: csmGetPartCount(model_ptr),
+                part_ids: csmGetPartIds(model_ptr),
+                part_opacities: csmGetPartOpacities(model_ptr),
             }
         }
     }
@@ -68,6 +90,7 @@ impl Renderer {
         &mut self,
         context: &mut Context,
         mp: &mut Option<MotionPlayer>,
+        exp: &mut Option<Expression>,
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
@@ -94,39 +117,26 @@ impl Renderer {
             context.update()?;
             context.clear();
 
+            // manipulation of model
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    self.param_default_vs,
+                    self.param_values,
+                    self.param_count,
+                );
+                for i in 0..self.part_count as usize {
+                    *self.part_opacities.add(i) = 1.0;
+                }
+            }
+
             let delta_time = last_frame.elapsed().as_secs_f32();
             last_frame = Instant::now();
             if let Some(mp) = mp {
                 mp.update(delta_time, self);
             }
 
-            // manipulation of model
-            let t = self.start_time.elapsed().as_secs_f32();
-            unsafe {
-                // updating parameter and parts opacity
-                let p_count = csmGetParameterCount(self.model);
-                let p_ids = csmGetParameterIds(self.model);
-                let p_min_vs = csmGetParameterMinimumValues(self.model);
-                let p_max_vs = csmGetParameterMaximumValues(self.model);
-                let p_default_vs = csmGetParameterDefaultValues(self.model);
-                let p_vs = csmGetParameterValues(self.model);
-
-                let part_count = csmGetPartCount(self.model);
-                let part_ids = csmGetPartIds(self.model);
-                let part_opacities = csmGetPartOpacities(self.model);
-
-                //                for i in 0..p_count {
-                //                    let max_v = *p_max_vs.add(i as usize);
-                //                    let min_v = *p_min_vs.add(i as usize);
-                //                    let range = max_v - min_v;
-                //                    let mid = min_v + range / 2.0;
-                //
-                //                    let phase = i as f32 * 0.3;
-                //
-                //                    let current_val = mid + (range / 2.0) * (t * 2.0 + phase).sin();
-                //
-                //                    *p_vs.add(i as usize) = current_val;
-                //                }
+            if let Some(exp) = exp {
+                exp.apply(delta_time, self);
             }
 
             // applying manioulation to Drawable
@@ -163,7 +173,7 @@ impl Renderer {
             for &drawable_idx in &drawables {
                 unsafe {
                     let opacity = *opacities.add(drawable_idx);
-                    if opacity <= 0.0 {
+                    if opacity <= 0.001 {
                         continue;
                     }
                     // get texture
@@ -314,5 +324,48 @@ impl Renderer {
             }
         }
         None
+    }
+
+    pub fn find_part_index(&self, target_id: &str) -> Option<usize> {
+        unsafe {
+            let count = csmGetPartCount(self.model) as usize;
+            let ids_ptr = csmGetPartIds(self.model);
+            if ids_ptr.is_null() {
+                return None;
+            }
+
+            for i in 0..count {
+                let id_ptr = *ids_ptr.add(i);
+
+                if !id_ptr.is_null() {
+                    let c_str = CStr::from_ptr(id_ptr);
+                    if let Ok(id_str) = c_str.to_str() {
+                        if id_str == target_id {
+                            return Some(i);
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub fn get_param_id_by_index(&self, index: usize) -> String {
+        if index >= self.param_count {
+            return String::new();
+        }
+
+        unsafe {
+            let id_ptr_ptr = self.param_ids.add(index);
+            let id_ptr = *id_ptr_ptr;
+
+            if id_ptr.is_null() {
+                return String::new();
+            }
+
+            std::ffi::CStr::from_ptr(id_ptr)
+                .to_string_lossy()
+                .into_owned()
+        }
     }
 }

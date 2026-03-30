@@ -3,8 +3,8 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 
+use crate::ffi::{csmGetParameterValues, csmGetPartOpacities};
 use crate::renderer::*;
-use crate::ffi::csmGetParameterValues;
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 #[serde(rename_all = "PascalCase")]
@@ -13,12 +13,12 @@ pub struct Meta {
     pub fps: f32,
     pub loop_: bool,
     // not necessary
-//  pub are_beziers_restricted: bool,
-//  pub curve_count: usize,
-//  pub total_segment_count: usize,
-//  pub total_point_count: usize,
-//  pub user_data_count: usize,
-//  pub total_user_data_size: usize,
+    //  pub are_beziers_restricted: bool,
+    //  pub curve_count: usize,
+    //  pub total_segment_count: usize,
+    //  pub total_point_count: usize,
+    //  pub user_data_count: usize,
+    //  pub total_user_data_size: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -37,14 +37,14 @@ impl PartialEq for Curve {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct Motion {
+pub struct Motion3 {
     pub version: usize,
     pub meta: Meta,
     pub curves: Vec<Curve>,
 }
 
 pub struct MotionPlayer {
-    pub motion: Motion,
+    pub motion: Motion3,
     pub current_time: f32,
 }
 
@@ -67,15 +67,20 @@ impl MotionPlayer {
         }
 
         for curve in &self.motion.curves {
-            if curve.target != "Parameter" {
-                continue;
-            }
-
             let val = self.evaluate_curve(&curve.segments, self.current_time);
-            unsafe {
-                if let Some(idx) = renderer.find_param_index(&curve.id) {
-                    let param_values = csmGetParameterValues(renderer.model);
-                    *param_values.add(idx) = val;
+            if curve.target == "Parameter" {
+                unsafe {
+                    if let Some(idx) = renderer.find_param_index(&curve.id) {
+                        let param_values = csmGetParameterValues(renderer.model);
+                        *param_values.add(idx) = val;
+                    }
+                }
+            } else if curve.target == "PartOpacity" {
+                unsafe {
+                    if let Some(idx) = renderer.find_part_index(&curve.id) {
+                        let part_opacities = csmGetPartOpacities(renderer.model);
+                        *part_opacities.add(idx) = val;
+                    }
                 }
             }
         }
@@ -147,7 +152,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_motion_json() {
+    fn parse_motion3_json() {
         let mp = MotionPlayer::new("./test_file/test.motion3.json").unwrap();
         assert_eq!(mp.motion.version, 3);
         assert_eq!(mp.motion.meta.duration, 4.);
@@ -159,5 +164,5 @@ mod tests {
             segments: vec![0., 0., 0., 1., 30., 0., 2., -30., 0., 3., 30., 0., 4., 0.],
         };
         assert_eq!(mp.motion.curves[0], c1);
-    } 
+    }
 }

@@ -1,0 +1,35 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "model.moc3",
+    "Textures": ["texture_00.png"],
+    "Physics": "model.physics3.json",
+    "Pose": "model.pose3.json",
+    "Expressions": [
+      { "Name": "smile", "File": "exp_smile.json" },
+      { "Name": "angry", "File": "exp_angry.json" }
+    ],
+    "Motions": {
+      "Idle": [
+        { "File": "idle.motion3.json", "FadeInTime": 1.0, "FadeOutTime": 1.0 }
+      ],
+      "TapBody": [{ "File": "tap_body.motion3.json" }]
+    }
+  },
+  "Groups": [
+    {
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": ["ParamEyeLOpen", "ParamEyeROpen"]
+    },
+    {
+      "Target": "Parameter",
+      "Name": "LipSync",
+      "Ids": ["ParamMouthOpenY"]
+    }
+  ],
+  "HitAreas": [
+    { "Id": "HitAreaHead", "Name": "head" },
+    { "Id": "HitAreaBody", "Name": "body" }
+  ]
+}
