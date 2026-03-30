@@ -71,15 +71,13 @@ pub struct Expression {
 pub struct MotionRef {
     pub file: String,
     pub sound: Option<String>,
-    #[serde(default = "default_fade_time")]
+    #[serde(default = "crate::utils::default_fade_time")]
     pub fade_in_time: f32,
-    #[serde(default = "default_fade_time")]
+    #[serde(default = "crate::utils::default_fade_time")]
     pub fade_out_time: f32,
 }
 
-fn default_fade_time() -> f32 {
-    1.0
-}
+
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialOrd, PartialEq)]
 #[serde(rename_all = "PascalCase")]

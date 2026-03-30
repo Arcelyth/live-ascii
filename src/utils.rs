@@ -13,6 +13,10 @@ pub fn sort_path(files: &mut Vec<PathBuf>) {
     files.sort_by_key(|path| path.file_name().unwrap().to_string_lossy().to_string());
 }
 
+pub fn default_fade_time() -> f32 {
+    1.0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

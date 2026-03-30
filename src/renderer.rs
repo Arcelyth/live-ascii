@@ -18,7 +18,7 @@ use crate::context::*;
 use crate::exp::*;
 use crate::ffi::*;
 use crate::geometry::*;
-use crate::motion::*;
+use crate::motion::motion_player::*;
 
 const ASCII_CHARS: &[char] = &[' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
 
