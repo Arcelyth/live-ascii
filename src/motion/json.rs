@@ -34,7 +34,7 @@ pub struct Curve {
     #[serde(default = "crate::utils::default_fade_time")]
     pub fade_out_time: f32,
     // TODO: change to Segments
-    pub segments: Vec<f32>,
+    pub segments: Segments,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -69,7 +69,7 @@ pub enum SegmentType {
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
-pub struct Segments(Vec<SegmentType>);
+pub struct Segments(pub Vec<SegmentType>);
 
 impl<'de> Deserialize<'de> for Segments {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

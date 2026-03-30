@@ -2,9 +2,43 @@ use std::error::Error;
 use std::fs;
 
 use crate::ffi::{csmGetParameterValues, csmGetPartOpacities};
-use crate::renderer::*;
 use crate::motion::json::*;
+use crate::renderer::*;
 
+pub fn lerp_points(a: SegmentPoint, b: SegmentPoint, t: f32) -> SegmentPoint {
+    SegmentPoint {
+        time: a.time + (b.time - a.time) * t,
+        value: a.value + (b.value - a.value) * t,
+    }
+}
+
+pub fn linear_evaluate(p0: SegmentPoint, p1: SegmentPoint, time: f32) -> f32 {
+    let mut t = (time - p0.time) / (p1.time - p0.time);
+    if t < 0. {
+        t = 0.;
+    }
+    p0.value + ((p1.value - p0.value) * t)
+}
+
+pub fn bezier_evaluate(
+    p0: SegmentPoint,
+    p1: SegmentPoint,
+    p2: SegmentPoint,
+    p3: SegmentPoint,
+    time: f32,
+) -> f32 {
+    let mut t = (time - p0.time) / (p3.time - p0.time);
+    if t < 0. {
+        t = 0.;
+    }
+
+    let p01 = lerp_points(p0, p1, t);
+    let p12 = lerp_points(p1, p2, t);
+    let p23 = lerp_points(p2, p3, t);
+    let p012 = lerp_points(p01, p12, t);
+    let p123 = lerp_points(p12, p23, t);
+    lerp_points(p012, p123, t).value
+}
 
 pub struct MotionPlayer {
     pub motion: Motion3,
@@ -26,11 +60,16 @@ impl MotionPlayer {
 
         // loop motion
         if self.current_time >= self.motion.meta.duration {
-            self.current_time = 0.
+            if self.motion.meta.loop_ {
+                self.current_time %= self.motion.meta.duration;
+            } else {
+                self.current_time = self.motion.meta.duration;
+            }
         }
 
         for curve in &self.motion.curves {
             let val = self.evaluate_curve(&curve.segments, self.current_time);
+
             if curve.target == "Parameter" {
                 unsafe {
                     if let Some(idx) = renderer.find_param_index(&curve.id) {
@@ -49,64 +88,49 @@ impl MotionPlayer {
         }
     }
 
-    fn evaluate_curve(&self, segments: &[f32], time: f32) -> f32 {
-        let mut i = 0;
-        let mut base_time = segments[0];
-        let mut base_value = segments[1];
-
-        if time <= base_time {
-            return base_value;
+    fn evaluate_curve(&self, segments: &Segments, time: f32) -> f32 {
+        let segs = &segments.0;
+        if segs.is_empty() {
+            return 0.0;
         }
 
-        i += 2;
-
-        while i < segments.len() {
-            let segment_type = segments[i] as i32;
-            i += 1;
-
-            match segment_type {
-                0 => {
-                    // Linear
-                    let next_time = segments[i];
-                    let next_value = segments[i + 1];
-                    i += 2;
-
-                    if time <= next_time {
-                        let t = (time - base_time) / (next_time - base_time);
-                        return base_value + (next_value - base_value) * t;
+        for seg in segs {
+            match seg {
+                SegmentType::Linear(p0, p1) => {
+                    if time <= p1.time {
+                        if time <= p0.time {
+                            return p0.value;
+                        }
+                        return linear_evaluate(*p0, *p1, time);
                     }
-                    base_time = next_time;
-                    base_value = next_value;
                 }
-                1 => {
-                    // TODO: Bezier
-                    let next_time = segments[i + 4];
-                    let next_value = segments[i + 5];
-                    i += 6;
-
-                    if time <= next_time {
-                        let t = (time - base_time) / (next_time - base_time);
-                        return base_value + (next_value - base_value) * t;
+                SegmentType::Bezier(p) => {
+                    if time <= p[3].time {
+                        if time <= p[0].time {
+                            return p[0].value;
+                        }
+                        return bezier_evaluate(p[0], p[1], p[2], p[3], time);
                     }
-                    base_time = next_time;
-                    base_value = next_value;
                 }
-                2 => {
-                    // Stepped
-                    let next_time = segments[i];
-                    let next_value = segments[i + 1];
-                    i += 2;
-
-                    if time < next_time {
-                        return base_value;
+                SegmentType::Stepped(p0, p1) => {
+                    if time < p1.time {
+                        return p0.value;
                     }
-                    base_time = next_time;
-                    base_value = next_value;
                 }
-                _ => break, // Inverse Stepped
+                SegmentType::InverseStepped(_, p1) => {
+                    if time <= p1.time {
+                        return p1.value;
+                    }
+                }
             }
         }
-        base_value
+
+        match segs.last().unwrap() {
+            SegmentType::Linear(_, p1) => p1.value,
+            SegmentType::Bezier([.., p3]) => p3.value,
+            SegmentType::Stepped(_, p1) => p1.value,
+            SegmentType::InverseStepped(_, p1) => p1.value,
+        }
     }
 }
 
@@ -121,13 +145,34 @@ mod tests {
         assert_eq!(mp.motion.meta.duration, 4.);
         assert_eq!(mp.motion.meta.fps, 30.);
         assert_eq!(mp.motion.meta.loop_, true);
+        
+        let expected_segments = Segments(vec![
+            SegmentType::Linear(
+                SegmentPoint { time: 0., value: 0. },
+                SegmentPoint { time: 1., value: 30. },
+            ),
+            SegmentType::Linear(
+                SegmentPoint { time: 1., value: 30. },
+                SegmentPoint { time: 2., value: -30. },
+            ),
+            SegmentType::Linear(
+                SegmentPoint { time: 2., value: -30. },
+                SegmentPoint { time: 3., value: 30. },
+            ),
+            SegmentType::Linear(
+                SegmentPoint { time: 3., value: 30. },
+                SegmentPoint { time: 4., value: 0. },
+            ),
+        ]);
+
         let c1 = Curve {
             target: "Parameter".to_string(),
             id: "PARAM_ANGLE_X".to_string(),
             fade_in_time: 1.0,
             fade_out_time: 1.0,
-            segments: vec![0., 0., 0., 1., 30., 0., 2., -30., 0., 3., 30., 0., 4., 0.],
+            segments: expected_segments,
         };
+        
         assert_eq!(mp.motion.curves[0], c1);
     }
 }
