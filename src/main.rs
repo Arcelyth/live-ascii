@@ -6,7 +6,7 @@ use std::path::Path;
 use std::ptr;
 
 use live_ascii::context::*;
-use live_ascii::exp::*;
+use live_ascii::expression::exp::*;
 use live_ascii::ffi::*;
 use live_ascii::model::Model3;
 use live_ascii::motion::motion_player::*;

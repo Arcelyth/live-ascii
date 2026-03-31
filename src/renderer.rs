@@ -15,7 +15,7 @@ use crossterm::{
 use image::{DynamicImage, GenericImageView};
 
 use crate::context::*;
-use crate::exp::*;
+use crate::expression::exp::*;
 use crate::ffi::*;
 use crate::geometry::*;
 use crate::motion::motion_player::*;
@@ -131,6 +131,7 @@ impl Renderer {
 
             let delta_time = last_frame.elapsed().as_secs_f32();
             last_frame = Instant::now();
+
             if let Some(mp) = mp {
                 mp.update(delta_time, self);
             }

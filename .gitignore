@@ -2,3 +2,5 @@
 
 .env
 /models
+
+.DS_Store
