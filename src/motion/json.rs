@@ -33,7 +33,6 @@ pub struct Curve {
     pub fade_in_time: f32,
     #[serde(default = "crate::utils::default_fade_time")]
     pub fade_out_time: f32,
-    // TODO: change to Segments
     pub segments: Segments,
 }
 
@@ -180,4 +179,105 @@ impl<'de> Deserialize<'de> for Segments {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum CurveTargetType {
+    Parameter,
+    PartOpacity,
+    Model,
+}
 
+#[derive(Debug, Clone)]
+pub struct MotionCurve {
+    pub target_type: CurveTargetType, 
+    pub id: String,
+    pub segment_count: usize,
+    pub base_segment_index: usize,
+    pub fade_in_time: f32,
+    pub fade_out_time: f32,
+}
+
+#[derive(Debug, Clone)]
+pub struct MotionSegment {
+    pub base_point_index: usize,
+    pub segment_type: u8,
+}
+
+#[derive(Debug, Clone)]
+pub struct MotionData {
+    pub duration: f32,
+    pub loop_: bool,
+    pub fps: f32,
+    pub curves: Vec<MotionCurve>,
+    pub segments: Vec<MotionSegment>,
+    pub points: Vec<SegmentPoint>,
+    pub events: Vec<MotionEvent>,
+}
+
+impl MotionData {
+    pub fn from_motion3(m3: Motion3) -> Self {
+        let mut curves = Vec::with_capacity(m3.curves.len());
+        let mut segments = Vec::new();
+        let mut points = Vec::new();
+
+        for curve in m3.curves {
+            let base_segment_index = segments.len();
+            let mut segment_count = 0;
+
+            for seg in curve.segments.0 {
+                let base_point_index = points.len();
+                
+                match seg {
+                    SegmentType::Linear(p0, p1) => {
+                        if segment_count == 0 { points.push(p0); }
+                        points.push(p1);
+                        segments.push(MotionSegment { base_point_index, segment_type: 0 });
+                    }
+                    SegmentType::Bezier(p_arr) => {
+                        if segment_count == 0 { points.push(p_arr[0]); }
+                        points.push(p_arr[1]);
+                        points.push(p_arr[2]);
+                        points.push(p_arr[3]);
+                        segments.push(MotionSegment { base_point_index, segment_type: 1 });
+                    }
+                    SegmentType::Stepped(p0, p1) => {
+                        if segment_count == 0 { points.push(p0); }
+                        points.push(p1);
+                        segments.push(MotionSegment { base_point_index, segment_type: 2 });
+                    }
+                    SegmentType::InverseStepped(p0, p1) => {
+                        if segment_count == 0 { points.push(p0); }
+                        points.push(p1);
+                        segments.push(MotionSegment { base_point_index, segment_type: 3 });
+                    }
+                }
+                segment_count += 1;
+            }
+
+            let target_type = match curve.target.as_str() {
+                "Parameter" => CurveTargetType::Parameter,
+                "PartOpacity" => CurveTargetType::PartOpacity,
+                "Model" => CurveTargetType::Model,
+                _ => panic!("Unknow target type.")
+            };
+
+            curves.push(MotionCurve {
+                target_type,
+                id: curve.id,
+                segment_count,
+                base_segment_index,
+                fade_in_time: curve.fade_in_time,
+                fade_out_time: curve.fade_out_time,
+            });
+        }
+
+        Self {
+            duration: m3.meta.duration,
+            loop_: m3.meta.loop_,
+            fps: m3.meta.fps,
+            curves,
+            segments,
+            points,
+            events: m3.user_data,
+        }
+    }
+}

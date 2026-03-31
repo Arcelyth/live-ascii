@@ -1,2 +1,4 @@
 pub mod json;
-pub mod motion_player;
+pub mod player;
+pub mod queue;
+pub mod amotion;
