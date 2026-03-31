@@ -1,10 +1,7 @@
+#![allow(dead_code)]
+
 use crate::motion::json::*;
 use crate::motion::queue::*;
-
-pub trait AMotion {
-
-    
-}
 
 pub struct MotionBase {
     pub fade_in_seconds: f32,
@@ -98,7 +95,7 @@ impl CubismMotion {
         }
     }
 
-    pub fn get_fade_in_time(&mut self, id: String, value: f32) -> Option<f32> {
+    pub fn get_fade_in_time(&mut self, id: String) -> Option<f32> {
         for curve in &mut self.motion_data.curves {
             if id == curve.id {
                 return Some(curve.fade_in_time);                
@@ -107,7 +104,7 @@ impl CubismMotion {
         None
     }
 
-    pub fn get_fade_out_time(&mut self, id: String, value: f32) -> Option<f32> {
+    pub fn get_fade_out_time(&mut self, id: String) -> Option<f32> {
         for curve in &mut self.motion_data.curves {
             if id == curve.id {
                 return Some(curve.fade_out_time);                

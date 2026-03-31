@@ -8,7 +8,7 @@ use std::ptr;
 use live_ascii::context::*;
 use live_ascii::expression::exp::*;
 use live_ascii::ffi::*;
-use live_ascii::model::Model3;
+use live_ascii::model_setting::ModelSetting;
 use live_ascii::motion::player::*;
 use live_ascii::renderer::*;
 use live_ascii::utils::*;
@@ -22,7 +22,7 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let model3 = Model3::new(&args.model3)?;
+    let model3 = ModelSetting::new(&args.model3)?;
     let model3_path = Path::new(&args.model3).canonicalize()?;
     let base_dir = model3_path.parent().unwrap();
 

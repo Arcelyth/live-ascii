@@ -5,4 +5,5 @@ pub mod geometry;
 pub mod renderer;
 pub mod motion;
 pub mod expression;
+pub mod model_setting;
 pub mod model;
