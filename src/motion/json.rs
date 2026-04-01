@@ -165,7 +165,7 @@ impl<'de> Deserialize<'de> for Segments {
                             let v: f32 = seq
                                 .next_element()?
                                 .ok_or_else(|| de::Error::custom("Missing inv-stepped value"))?;
-                            let p = SegmentPoint { time: t, value: v };
+                           let p = SegmentPoint { time: t, value: v };
                             result.push(SegmentType::InverseStepped(last_point, p));
                             last_point = p;
                         }
@@ -188,7 +188,7 @@ pub enum CurveTargetType {
 
 #[derive(Debug, Clone)]
 pub struct MotionCurve {
-    pub target_type: CurveTargetType, 
+    pub target_type: CurveTargetType,
     pub id: String,
     pub segment_count: usize,
     pub base_segment_index: usize,
@@ -196,10 +196,18 @@ pub struct MotionCurve {
     pub fade_out_time: f32,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum MotionSegmentType {
+    Linear,
+    Bezier,
+    Stepped,
+    InverseStepped,
+}
+
 #[derive(Debug, Clone)]
 pub struct MotionSegment {
     pub base_point_index: usize,
-    pub segment_type: u8,
+    pub segment_type: MotionSegmentType,
 }
 
 #[derive(Debug, Clone)]
@@ -225,29 +233,49 @@ impl MotionData {
 
             for seg in curve.segments.0 {
                 let base_point_index = points.len();
-                
+
                 match seg {
                     SegmentType::Linear(p0, p1) => {
-                        if segment_count == 0 { points.push(p0); }
+                        if segment_count == 0 {
+                            points.push(p0);
+                        }
                         points.push(p1);
-                        segments.push(MotionSegment { base_point_index, segment_type: 0 });
+                        segments.push(MotionSegment {
+                            base_point_index,
+                            segment_type: MotionSegmentType::Linear,
+                        });
                     }
                     SegmentType::Bezier(p_arr) => {
-                        if segment_count == 0 { points.push(p_arr[0]); }
+                        if segment_count == 0 {
+                            points.push(p_arr[0]);
+                        }
                         points.push(p_arr[1]);
                         points.push(p_arr[2]);
                         points.push(p_arr[3]);
-                        segments.push(MotionSegment { base_point_index, segment_type: 1 });
+                        segments.push(MotionSegment {
+                            base_point_index,
+                            segment_type: MotionSegmentType::Bezier,
+                        });
                     }
                     SegmentType::Stepped(p0, p1) => {
-                        if segment_count == 0 { points.push(p0); }
+                        if segment_count == 0 {
+                            points.push(p0);
+                        }
                         points.push(p1);
-                        segments.push(MotionSegment { base_point_index, segment_type: 2 });
+                        segments.push(MotionSegment {
+                            base_point_index,
+                            segment_type: MotionSegmentType::Stepped,
+                        });
                     }
                     SegmentType::InverseStepped(p0, p1) => {
-                        if segment_count == 0 { points.push(p0); }
+                        if segment_count == 0 {
+                            points.push(p0);
+                        }
                         points.push(p1);
-                        segments.push(MotionSegment { base_point_index, segment_type: 3 });
+                        segments.push(MotionSegment {
+                            base_point_index,
+                            segment_type: MotionSegmentType::InverseStepped,
+                        });
                     }
                 }
                 segment_count += 1;
@@ -257,7 +285,7 @@ impl MotionData {
                 "Parameter" => CurveTargetType::Parameter,
                 "PartOpacity" => CurveTargetType::PartOpacity,
                 "Model" => CurveTargetType::Model,
-                _ => panic!("Unknow target type.")
+                _ => panic!("Unknow target type."),
             };
 
             curves.push(MotionCurve {
