@@ -18,13 +18,18 @@ use crate::context::*;
 use crate::expression::exp::*;
 use crate::ffi::*;
 use crate::geometry::*;
+use crate::model::*;
+use crate::model_setting::ModelSetting;
+use crate::motion::amotion::*;
+use crate::motion::json::*;
+use crate::motion::manager::*;
 use crate::motion::player::*;
 
 const ASCII_CHARS: &[char] = &[' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
 
 pub struct Renderer {
     pub count: usize,
-    pub model: *mut CsmModel,
+    pub model: Model,
     constant_flags: *const u8,
     texture_indices: *const i32,
     vertex_counts: *const i32,
@@ -39,25 +44,14 @@ pub struct Renderer {
     offset_y: f32,
     scale: f32,
     start_time: Instant,
-
-    // parameter field
-    pub param_count: usize,
-    pub param_ids: *const *const i8,
-    pub param_values: *mut f32,
-    pub param_max_vs: *const f32,
-    pub param_min_vs: *const f32,
-    pub param_default_vs: *const f32,
-    // parts opacity
-    pub part_count: i32,
-    pub part_ids: *const *const i8,
-    pub part_opacities: *mut f32,
 }
 
 impl Renderer {
     pub fn new(model_ptr: *mut CsmModel, textures: Vec<DynamicImage>) -> Self {
+        let model = Model::new(model_ptr);
         unsafe {
             Self {
-                model: model_ptr,
+                model,
                 count: csmGetDrawableCount(model_ptr) as usize,
                 constant_flags: csmGetDrawableConstantFlags(model_ptr),
                 texture_indices: csmGetDrawableTextureIndices(model_ptr),
@@ -73,30 +67,26 @@ impl Renderer {
                 offset_y: 0.,
                 scale: 1.,
                 start_time: Instant::now(),
-                param_max_vs: csmGetParameterMaximumValues(model_ptr),
-                param_min_vs: csmGetParameterMinimumValues(model_ptr),
-                param_count: csmGetParameterCount(model_ptr) as usize,
-                param_ids: csmGetParameterIds(model_ptr),
-                param_values: csmGetParameterValues(model_ptr),
-                param_default_vs: csmGetParameterDefaultValues(model_ptr),
-                part_count: csmGetPartCount(model_ptr),
-                part_ids: csmGetPartIds(model_ptr),
-                part_opacities: csmGetPartOpacities(model_ptr),
             }
         }
     }
 
-    pub fn render(
+    pub fn render<'m>(
         &mut self,
         context: &mut Context,
         mp: &mut Option<MotionPlayer>,
+        mm: &mut MotionManager<'m>,
+        model_setting: &ModelSetting,
         exp: &mut Option<Expression>,
+        idle_motion: &'m mut CubismMotion,
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
         let fps = 120.0;
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
         let mut last_frame = Instant::now();
+
+        mm.start_motion_priority(idle_motion, true, 0);
         loop {
             let frame_start = Instant::now();
 
@@ -118,52 +108,39 @@ impl Renderer {
             context.clear();
 
             // manipulation of model
-            unsafe {
-                std::ptr::copy_nonoverlapping(
-                    self.param_default_vs,
-                    self.param_values,
-                    self.param_count,
-                );
-                for i in 0..self.part_count as usize {
-                    *self.part_opacities.add(i) = 1.0;
-                }
-            }
-
             let delta_time = last_frame.elapsed().as_secs_f32();
             last_frame = Instant::now();
 
-            if let Some(mp) = mp {
-                mp.update(delta_time, self);
-            }
+            mm.update_motion(&mut self.model, delta_time);
 
-            if let Some(exp) = exp {
-                exp.apply(delta_time, self);
-            }
+            //            if let Some(exp) = exp {
+            //                exp.apply(delta_time, self);
+            //            }
 
             // applying manioulation to Drawable
             unsafe {
-                csmResetDrawableDynamicFlags(self.model);
+                csmResetDrawableDynamicFlags(self.model.model);
                 // updating vertex information
-                csmUpdateModel(self.model);
+                csmUpdateModel(self.model.model);
             }
 
             // applying updated vertex inforamation to renderer
             let (dy_flags, opacities, vt_positions, render_orders) = unsafe {
-                let dy_flags = csmGetDrawableDynamicFlags(self.model);
-                let opacities = csmGetDrawableOpacities(self.model);
-                let vt_positions = csmGetDrawableVertexPositions(self.model);
-                let render_orders = csmGetDrawableRenderOrders(self.model);
+                let dy_flags = csmGetDrawableDynamicFlags(self.model.model);
+                let opacities = csmGetDrawableOpacities(self.model.model);
+                let vt_positions = csmGetDrawableVertexPositions(self.model.model);
+                let render_orders = csmGetDrawableRenderOrders(self.model.model);
                 (dy_flags, opacities, vt_positions, render_orders)
             };
 
             // rendering a model
             let mask_counts = unsafe {
                 // Clipping
-                let mask_counts = csmGetDrawableMaskCounts(self.model);
+                let mask_counts = csmGetDrawableMaskCounts(self.model.model);
 
                 // Multiply color, Screen color
-                self.multiply_colors = csmGetDrawableMultiplyColors(self.model);
-                self.screen_colors = csmGetDrawableScreenColors(self.model);
+                self.multiply_colors = csmGetDrawableMultiplyColors(self.model.model);
+                self.screen_colors = csmGetDrawableScreenColors(self.model.model);
                 mask_counts
             };
 
@@ -305,8 +282,8 @@ impl Renderer {
 
     pub fn find_param_index(&self, target_id: &str) -> Option<usize> {
         unsafe {
-            let count = csmGetParameterCount(self.model) as usize;
-            let ids_ptr = csmGetParameterIds(self.model);
+            let count = csmGetParameterCount(self.model.model) as usize;
+            let ids_ptr = csmGetParameterIds(self.model.model);
             if ids_ptr.is_null() {
                 return None;
             }
@@ -329,8 +306,8 @@ impl Renderer {
 
     pub fn find_part_index(&self, target_id: &str) -> Option<usize> {
         unsafe {
-            let count = csmGetPartCount(self.model) as usize;
-            let ids_ptr = csmGetPartIds(self.model);
+            let count = csmGetPartCount(self.model.model) as usize;
+            let ids_ptr = csmGetPartIds(self.model.model);
             if ids_ptr.is_null() {
                 return None;
             }
@@ -349,24 +326,5 @@ impl Renderer {
             }
         }
         None
-    }
-
-    pub fn get_param_id_by_index(&self, index: usize) -> String {
-        if index >= self.param_count {
-            return String::new();
-        }
-
-        unsafe {
-            let id_ptr_ptr = self.param_ids.add(index);
-            let id_ptr = *id_ptr_ptr;
-
-            if id_ptr.is_null() {
-                return String::new();
-            }
-
-            std::ffi::CStr::from_ptr(id_ptr)
-                .to_string_lossy()
-                .into_owned()
-        }
     }
 }

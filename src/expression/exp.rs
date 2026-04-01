@@ -39,7 +39,7 @@ impl Expression {
         for param in &self.exp.parameters {
             unsafe {
                 if let Some(idx) = renderer.find_param_index(&param.id) {
-                    let param_values = csmGetParameterValues(renderer.model);
+                    let param_values = csmGetParameterValues(renderer.model.model);
                     let current_val = *param_values.add(idx);
 
                     let new_val = match param.blend.as_str() {

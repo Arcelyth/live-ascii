@@ -7,3 +7,4 @@ pub mod motion;
 pub mod expression;
 pub mod model_setting;
 pub mod model;
+pub mod effect;

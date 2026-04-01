@@ -137,6 +137,4 @@ impl<'m> MotionQueueManager<'m> {
     }
 }
 
-pub fn adjust_end_time(qe: &mut MotionQueueEntry) {
-    qe.end_time_seconds = -1.;
-}
+

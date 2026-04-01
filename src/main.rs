@@ -8,8 +8,13 @@ use std::ptr;
 use live_ascii::context::*;
 use live_ascii::expression::exp::*;
 use live_ascii::ffi::*;
+use live_ascii::model::*;
 use live_ascii::model_setting::ModelSetting;
+use live_ascii::motion::manager::*;
 use live_ascii::motion::player::*;
+use live_ascii::motion::json::*;
+use live_ascii::motion::amotion::*;
+
 use live_ascii::renderer::*;
 use live_ascii::utils::*;
 
@@ -17,16 +22,16 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 struct Args {
-    model3: String, // model3.json file
+    model_setting: String, // model3.json file
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let model3 = ModelSetting::new(&args.model3)?;
-    let model3_path = Path::new(&args.model3).canonicalize()?;
+    let model_setting = ModelSetting::new(&args.model_setting)?;
+    let model3_path = Path::new(&args.model_setting).canonicalize()?;
     let base_dir = model3_path.parent().unwrap();
 
-    let file_refs = &model3.file_references;
+    let file_refs = &model_setting.file_references;
 
     let mut moc_data = Vec::new();
     if let Some(moc_relative_path) = &file_refs.moc {
@@ -69,7 +74,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let mut renderer = Renderer::new(model_ptr, textures);
 
     // initialize terminal
     let mut context = Context::new(false);
@@ -86,6 +90,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         None
     };
 
+    // initialize motion manager
+    let mut mm = MotionManager::new();
+
+    // initialize renderer
+    let mut renderer = Renderer::new(model_ptr, textures);
+
     // initialize expression
     let expressions = &file_refs.expressions;
     let mut exp = if expressions.is_empty() {
@@ -94,8 +104,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         let full_exp_path = base_dir.join(&expressions[0].file);
         Some(Expression::new(full_exp_path.to_str().unwrap())?)
     };
+    let motion_file = model_setting.get_motion_file_name("Idle", 0).unwrap();
+    let motion_data = MotionData::from_path(base_dir.to_str().unwrap(), motion_file)?;
 
-    renderer.render(&mut context, &mut mp, &mut exp)?;
+    let mut idle_motion = CubismMotion::new(motion_data);
+
+    renderer.render(
+        &mut context,
+        &mut mp,
+        &mut mm,
+        &model_setting,
+        &mut exp,
+        &mut idle_motion,
+    )?;
 
     Ok(())
 }

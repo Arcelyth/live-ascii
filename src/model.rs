@@ -93,6 +93,36 @@ impl Model {
         }
     }
 
+    pub fn load_parameters(&mut self) {
+        let parameter_count = unsafe { csmGetParameterCount(self.model) } as usize;
+        let saved_parameter_count = self.saved_params.len();
+
+        let count = if parameter_count > saved_parameter_count {
+            saved_parameter_count
+        } else {
+            parameter_count
+        };
+
+        for i in 0..count {
+            unsafe {
+                *self.param_values.add(i) = self.saved_params[i];
+            }
+        }
+    }
+
+    pub fn save_parameters(&mut self) {
+        let parameter_count = unsafe { csmGetParameterCount(self.model) } as usize;
+        let saved_parameter_count = self.saved_params.len();
+
+        for i in 0..parameter_count {
+            if i < saved_parameter_count {
+                self.saved_params[i] = unsafe { *self.param_values.add(i) };
+            } else {
+                self.saved_params.push(unsafe { *self.param_values.add(i) });
+            }
+        }
+    }
+
     pub fn get_parameter_index(&self, id: &str) -> Option<usize> {
         self.param_ids.iter().position(|p| p == id)
     }
@@ -155,12 +185,42 @@ impl Model {
         }
     }
 
-
     pub fn set_parameter_value_by_id(&mut self, index: &str, value: f32, weight: f32) {
         if let Some(index) = self.get_parameter_index(index) {
             self.set_parameter_value(index, value, weight);
         };
     }
+
+    pub fn set_part_opacity(&mut self, idx: usize, opacity: f32) {
+        unsafe {
+            if let Some(_) = self.not_exist_part_opacities.get(&idx) {
+                self.not_exist_part_opacities.insert(idx, opacity);
+            } else {
+                *self.part_opacities.add(idx) = opacity;
+            }
+        }
+    }
+
+    pub fn set_part_opacity_by_id(&mut self, idx: &str, opacity: f32) {
+        let idx = self.get_part_index(idx);
+        self.set_part_opacity(idx, opacity);
+    }
+
+    pub fn get_part_opacity(&mut self, idx: usize) -> f32 {
+        unsafe {
+            if let Some(v) = self.not_exist_part_opacities.get(&idx) {
+                *v
+            } else {
+                *self.part_opacities.add(idx)
+            }
+        }
+    }
+
+    pub fn get_part_opacity_by_id(&mut self, id: String) -> f32 {
+        let idx = self.get_part_index(&id);
+        self.get_part_opacity(idx)
+    }
+
 
     pub fn is_repeat(&self, parameter_index: usize) -> bool {
         if self.not_exist_param_values.contains_key(&parameter_index) {
@@ -176,6 +236,7 @@ impl Model {
             is_repeat != 0
         }
     }
+
 
     pub fn get_parameter_repeat_value(&self, parameter_index: usize, mut value: f32) -> f32 {
         if self.not_exist_param_values.contains_key(&parameter_index) {
@@ -211,7 +272,24 @@ impl Model {
         value
     }
 
-    pub unsafe fn get_canvas_info(&self) -> (CsmVector2, CsmVector2, f32) {
+    pub fn get_part_index(&mut self, id: &str) -> usize {
+        let part_count = unsafe { csmGetPartCount(self.model) } as usize;
+        for i in 0..part_count {
+            if id == self.part_ids[i] {
+                return i;
+            }
+        }
+        if let Some(i) = self.not_exist_part_id.get(&*id) {
+            return *i;
+        }
+
+        let i = part_count + self.not_exist_part_id.len();
+        self.not_exist_part_id.insert(id.to_string(), i);
+        self.not_exist_part_opacities[&i];
+        i
+    }
+
+    pub fn get_canvas_info(&self) -> (CsmVector2, CsmVector2, f32) {
         let mut size_in_pixels = CsmVector2 { x: 0.0, y: 0.0 };
         let mut origin_in_pixels = CsmVector2 { x: 0.0, y: 0.0 };
         let mut pixels_per_unit = 0.0;

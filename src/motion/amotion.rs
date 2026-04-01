@@ -25,7 +25,7 @@ impl MotionBase {
             fade_out_seconds: 1.,
             weight: 1.,
             offset_seconds: 0.,
-            is_loop: false,
+            is_loop: true,
             is_loop_fade_in: true,
             previous_loop_state: false,
             fired_event_values: vec![],
@@ -144,7 +144,7 @@ impl CubismMotion {
         if let MotionBehavior::MotionBehaviorV2 = self.motion_behavior {
             if self.base.previous_loop_state != self.base.is_loop {
                 // recalculate the end time
-                adjust_end_time(motion_queue_e);
+                self.adjust_end_time(motion_queue_e);
                 self.base.previous_loop_state = self.base.is_loop;
             }
         }

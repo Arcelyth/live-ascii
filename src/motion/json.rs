@@ -1,4 +1,7 @@
 use std::fmt;
+use std::path::Path;
+use std::fs;
+use std::error::Error;
 
 use serde::de::{self, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -222,7 +225,13 @@ pub struct MotionData {
 }
 
 impl MotionData {
-    pub fn from_motion3(m3: Motion3) -> Self {
+    pub fn from_path(base_dir: &str, path: &str) -> Result<Self, Box<dyn Error>> {
+    let full_path = Path::new(base_dir).join(path);
+        let data = fs::read_to_string(&full_path)
+            .map_err(|e| format!("Failed to read file {:?}: {}", full_path, e))?;
+
+        let m3: Motion3 = serde_json::from_str(&data)
+            .map_err(|e| format!("Failed to parse JSON ({:?}): {}", full_path, e))?;
         let mut curves = Vec::with_capacity(m3.curves.len());
         let mut segments = Vec::new();
         let mut points = Vec::new();
@@ -298,7 +307,7 @@ impl MotionData {
             });
         }
 
-        Self {
+        Ok(Self {
             duration: m3.meta.duration,
             loop_: m3.meta.loop_,
             fps: m3.meta.fps,
@@ -306,6 +315,8 @@ impl MotionData {
             segments,
             points,
             events: m3.user_data,
-        }
+        })
     }
 }
+
+

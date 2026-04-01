@@ -73,14 +73,14 @@ impl MotionPlayer {
             if curve.target == "Parameter" {
                 unsafe {
                     if let Some(idx) = renderer.find_param_index(&curve.id) {
-                        let param_values = csmGetParameterValues(renderer.model);
+                        let param_values = csmGetParameterValues(renderer.model.model);
                         *param_values.add(idx) = val;
                     }
                 }
             } else if curve.target == "PartOpacity" {
                 unsafe {
                     if let Some(idx) = renderer.find_part_index(&curve.id) {
-                        let part_opacities = csmGetPartOpacities(renderer.model);
+                        let part_opacities = csmGetPartOpacities(renderer.model.model);
                         *part_opacities.add(idx) = val;
                     }
                 }
