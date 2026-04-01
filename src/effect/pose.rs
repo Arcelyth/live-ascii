@@ -8,7 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::model::Model;
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Pose3 {
     pub res_type: Option<String>,
@@ -17,7 +17,7 @@ pub struct Pose3 {
     pub groups: Vec<Vec<PartItem>>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct PartItem {
     pub id: String,
@@ -25,6 +25,7 @@ pub struct PartItem {
     pub link: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct PartData {
     pub part_id: String,
     pub param_index: Option<usize>,
@@ -51,6 +52,7 @@ impl PartData {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Pose {
     pub part_groups: Vec<PartData>,
     pub part_group_counts: Vec<usize>,
@@ -63,7 +65,7 @@ impl Pose {
     const PHI: f32 = 0.5;
     const BACK_OPACITY_THRESHOLD: f32 = 0.15;
 
-    pub fn new(base_dir: &str, path: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn from_path(base_dir: &str, path: &str) -> Result<Self, Box<dyn Error>> {
         let full_path = Path::new(base_dir).join(path);
         let data = fs::read_to_string(&full_path)?;
         let p3: Pose3 = serde_json::from_str(&data)?;
@@ -233,4 +235,31 @@ impl Pose {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn parse_pose3_json() {
+        let pose = Pose::from_path("./test_file", "./test.pose3.json").unwrap();
+        let res = Pose {
+            part_groups: vec![
+                PartData {
+                    part_id: "PartArmA".to_string(),
+                    param_index: None,
+                    part_index: None,
+                    link: vec![],
+                },
+                PartData {
+                    part_id: "PartArmB".to_string(),
+                    param_index: None,
+                    part_index: None,
+                    link: vec![],
+                },
+            ],
+            part_group_counts: vec![2],
+            fade_time_seconds: 0.5,
+        };
+        assert_eq!(pose, res);
+    }
+}

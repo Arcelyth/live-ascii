@@ -15,6 +15,7 @@ use crossterm::{
 use image::{DynamicImage, GenericImageView};
 
 use crate::context::*;
+use crate::effect::pose::*;
 use crate::expression::exp::*;
 use crate::ffi::*;
 use crate::geometry::*;
@@ -79,6 +80,7 @@ impl Renderer {
         model_setting: &ModelSetting,
         exp: &mut Option<Expression>,
         idle_motion: &'m mut CubismMotion,
+        pose: &mut Pose,
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
@@ -87,6 +89,7 @@ impl Renderer {
         let mut last_frame = Instant::now();
 
         mm.start_motion_priority(idle_motion, true, 0);
+        pose.reset(&mut self.model);
         loop {
             let frame_start = Instant::now();
 
@@ -112,7 +115,7 @@ impl Renderer {
             last_frame = Instant::now();
 
             mm.update_motion(&mut self.model, delta_time);
-
+            pose.update_parameters(&mut self.model, delta_time);
             //            if let Some(exp) = exp {
             //                exp.apply(delta_time, self);
             //            }
@@ -150,6 +153,11 @@ impl Renderer {
 
             for &drawable_idx in &drawables {
                 unsafe {
+                    let flags = *dy_flags.add(drawable_idx);
+                    let is_visible = (flags & 1) != 0;
+                    if !is_visible {
+                        continue;
+                    }
                     let opacity = *opacities.add(drawable_idx);
                     if opacity <= 0.001 {
                         continue;

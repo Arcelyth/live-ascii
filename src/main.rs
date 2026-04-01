@@ -9,6 +9,7 @@ use live_ascii::context::*;
 use live_ascii::expression::exp::*;
 use live_ascii::ffi::*;
 use live_ascii::model::*;
+use live_ascii::effect::pose::*;
 use live_ascii::model_setting::ModelSetting;
 use live_ascii::motion::manager::*;
 use live_ascii::motion::player::*;
@@ -109,6 +110,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut idle_motion = CubismMotion::new(motion_data);
 
+    let pose_file = model_setting.get_pose_file_name().unwrap();
+    let mut pose = Pose::from_path(base_dir.to_str().unwrap(), pose_file.to_str().unwrap())?;
+
     renderer.render(
         &mut context,
         &mut mp,
@@ -116,6 +120,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &model_setting,
         &mut exp,
         &mut idle_motion,
+        &mut pose,
     )?;
 
     Ok(())
