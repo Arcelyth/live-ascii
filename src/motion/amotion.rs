@@ -6,6 +6,17 @@ use crate::model::*;
 use crate::motion::json::*;
 use crate::motion::queue::*;
 
+pub trait ACubismMotion {
+    fn base(&self) -> &MotionBase;
+    fn base_mut(&mut self) -> &mut MotionBase;
+    fn update_parameters(&mut self, model: &mut Model, qe: &mut MotionQueueEntry, user_time_s: f32);
+    fn get_fired_events(
+        &mut self,
+        before_check_time_seconds: f32,
+        motion_time_seconds: f32,
+    ) -> Vec<String>;
+}
+
 pub struct MotionBase {
     pub fade_in_seconds: f32,
     pub fade_out_seconds: f32,
@@ -80,22 +91,6 @@ impl CubismMotion {
         };
     }
 
-    pub fn update_parameters(
-        &mut self,
-        model: &mut Model,
-        qe: &mut MotionQueueEntry,
-        user_time_s: f32,
-    ) {
-        if !qe.available || qe.finished {
-            return;
-        }
-        self.setup_motion_queue_entry(qe, user_time_s);
-        let fade_weight = self.update_fade_weight(qe, user_time_s);
-        self.do_update_parameters(model, user_time_s, fade_weight, qe);
-        if qe.end_time_seconds > 0. && qe.end_time_seconds < user_time_s {
-            qe.finished = true;
-        }
-    }
 
     pub fn setup_motion_queue_entry(&self, entry: &mut MotionQueueEntry, user_time: f32) {
         if !entry.available || entry.finished || entry.started {
@@ -407,22 +402,6 @@ impl CubismMotion {
         self.model_curve_id_lip_sync = lip_sync_ids;
     }
 
-    pub fn get_fired_events(
-        &mut self,
-        before_check_time_seconds: f32,
-        motion_time_seconds: f32,
-    ) -> Vec<String> {
-        self.base.fired_event_values.clear();
-
-        for event in &self.motion_data.events {
-            if event.time > before_check_time_seconds && event.time <= motion_time_seconds {
-                self.base.fired_event_values.push(event.value.clone());
-            }
-        }
-
-        self.base.fired_event_values.clone()
-    }
-
     pub fn is_exist_model_opacity(&self) -> bool {
         for curve in &self.motion_data.curves {
             if curve.target_type != CurveTargetType::Model {
@@ -457,6 +436,50 @@ impl CubismMotion {
     //            }
     //        }
     //    }
+}
+
+impl ACubismMotion for CubismMotion {
+
+    fn base_mut(&mut self) -> &mut MotionBase {
+        &mut self.base
+    }
+    
+    fn base(&self) -> &MotionBase {
+        &self.base
+    }
+
+    fn update_parameters(
+        &mut self,
+        model: &mut Model,
+        qe: &mut MotionQueueEntry,
+        user_time_s: f32,
+    ) {
+        if !qe.available || qe.finished {
+            return;
+        }
+        self.setup_motion_queue_entry(qe, user_time_s);
+        let fade_weight = self.update_fade_weight(qe, user_time_s);
+        self.do_update_parameters(model, user_time_s, fade_weight, qe);
+        if qe.end_time_seconds > 0. && qe.end_time_seconds < user_time_s {
+            qe.finished = true;
+        }
+    }
+
+    fn get_fired_events(
+        &mut self,
+        before_check_time_seconds: f32,
+        motion_time_seconds: f32,
+    ) -> Vec<String> {
+        self.base.fired_event_values.clear();
+
+        for event in &self.motion_data.events {
+            if event.time > before_check_time_seconds && event.time <= motion_time_seconds {
+                self.base.fired_event_values.push(event.value.clone());
+            }
+        }
+
+        self.base.fired_event_values.clone()
+    }
 }
 
 pub enum MotionBehavior {

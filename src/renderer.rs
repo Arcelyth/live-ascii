@@ -78,7 +78,7 @@ impl Renderer {
         mp: &mut Option<MotionPlayer>,
         mm: &mut MotionManager<'m>,
         model_setting: &ModelSetting,
-        exp: &mut Option<Expression>,
+        exp: &mut Option<ExpressionMotion>,
         idle_motion: &'m mut CubismMotion,
         pose: &mut Pose,
     ) -> Result<(), Box<dyn Error>> {

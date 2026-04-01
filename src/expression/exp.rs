@@ -5,14 +5,15 @@ use std::fs;
 use crate::ffi::*;
 use crate::renderer::*;
 use crate::expression::json::*;
+use crate::motion::amotion::*;
 
-pub struct Expression {
+pub struct ExpressionMotion {
     pub exp: Exp3,
     pub current_time: f32,
     pub weight: f32,
 }
 
-impl Expression {
+impl ExpressionMotion {
     pub fn new(path: &str) -> Result<Self, Box<dyn Error>> {
         let data = fs::read_to_string(path)?;
         let exp: Exp3 = serde_json::from_str(&data)?;
@@ -61,13 +62,15 @@ impl Expression {
     }
 }
 
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     pub fn parse_exp3_json() {
-        let exp = Expression::new("./test_file/test.exp3.json").unwrap();
+        let exp = ExpressionMotion::new("./test_file/test.exp3.json").unwrap();
         assert_eq!(exp.exp.type_, "Live2D Expression");
         
         let p0 = Parameter {

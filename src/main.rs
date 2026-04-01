@@ -103,7 +103,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         None
     } else {
         let full_exp_path = base_dir.join(&expressions[0].file);
-        Some(Expression::new(full_exp_path.to_str().unwrap())?)
+        Some(ExpressionMotion::new(full_exp_path.to_str().unwrap())?)
     };
     let motion_file = model_setting.get_motion_file_name("Idle", 0).unwrap();
     let motion_data = MotionData::from_path(base_dir.to_str().unwrap(), motion_file)?;

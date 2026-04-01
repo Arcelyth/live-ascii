@@ -4,7 +4,7 @@ use crate::motion::json::*;
 
 pub struct MotionQueueEntry<'m> {
     pub auto_delete: bool,
-    pub motion: &'m mut CubismMotion,
+    pub motion: &'m mut dyn ACubismMotion,
     pub available: bool,
     pub finished: bool,
     pub started: bool,
@@ -19,7 +19,7 @@ pub struct MotionQueueEntry<'m> {
 }
 
 impl<'m> MotionQueueEntry<'m> {
-    pub fn new(motion: &'m mut CubismMotion) -> Self {
+    pub fn new(motion: &'m mut dyn ACubismMotion) -> Self {
         Self {
             auto_delete: false,
             motion: motion,
@@ -73,7 +73,7 @@ impl<'m> MotionQueueManager<'m> {
 
     pub fn start_motion(&mut self, motion: &'m mut CubismMotion, auto_delete: bool) {
         for entry in &mut self.motions {
-            entry.set_fade_out(entry.motion.base.fade_out_seconds);
+            entry.set_fade_out(entry.motion.base().fade_out_seconds);
         }
         let mut m_entry = MotionQueueEntry::new(motion);
         m_entry.auto_delete = auto_delete;
