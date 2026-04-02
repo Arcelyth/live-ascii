@@ -6,16 +6,16 @@ use std::path::Path;
 use std::ptr;
 
 use live_ascii::context::*;
+use live_ascii::effect::pose::*;
 use live_ascii::expression::exp::*;
 use live_ascii::expression::manager::*;
 use live_ascii::ffi::*;
 use live_ascii::model::*;
-use live_ascii::effect::pose::*;
 use live_ascii::model_setting::ModelSetting;
+use live_ascii::motion::amotion::*;
+use live_ascii::motion::json::*;
 use live_ascii::motion::manager::*;
 use live_ascii::motion::player::*;
-use live_ascii::motion::json::*;
-use live_ascii::motion::amotion::*;
 
 use live_ascii::renderer::*;
 use live_ascii::utils::*;
@@ -29,7 +29,7 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let model_setting = ModelSetting::new(&args.model_setting)?;
+    let mut model_setting = ModelSetting::new(&args.model_setting)?;
     let model3_path = Path::new(&args.model_setting).canonicalize()?;
     let base_dir = model3_path.parent().unwrap();
 
@@ -98,10 +98,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut renderer = Renderer::new(model_ptr, textures);
 
     // initialize expression
-    let exp_file = model_setting.get_expression_file_name(3).unwrap();
+    let exp_file = model_setting.get_expression_file_name(1);
     let mut em = ExpressionManager::new();
-    let mut exp = ExpMotion::from_path(base_dir.to_str().unwrap(), exp_file)?; 
-
+    let mut exp = if let Some(ef) = exp_file {
+        Some(ExpMotion::from_path(base_dir.to_str().unwrap(),ef)?)
+    } else {None};
 
     let motion_file = model_setting.get_motion_file_name("Idle", 0).unwrap();
     let motion_data = MotionData::from_path(base_dir.to_str().unwrap(), motion_file)?;
@@ -115,7 +116,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &mut context,
         &mut mp,
         &mut mm,
-        &model_setting,
+        &mut model_setting,
         &mut exp,
         &mut em,
         &mut idle_motion,

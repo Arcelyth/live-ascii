@@ -15,6 +15,7 @@ use crossterm::{
 use image::{DynamicImage, GenericImageView};
 
 use crate::context::*;
+use crate::effect::eye_blink::*;
 use crate::effect::pose::*;
 use crate::expression::exp::*;
 use crate::expression::manager::*;
@@ -41,6 +42,10 @@ pub struct Renderer {
     indices: *const *const u16,
     multiply_colors: *const CsmVector4,
     screen_colors: *const CsmVector4,
+
+    mask_counts: *const i32,
+    masks: *const *const i32,
+
     textures: Vec<DynamicImage>,
     offset_x: f32,
     offset_y: f32,
@@ -64,6 +69,10 @@ impl Renderer {
                 indices: csmGetDrawableIndices(model_ptr),
                 multiply_colors: csmGetDrawableMultiplyColors(model_ptr),
                 screen_colors: csmGetDrawableScreenColors(model_ptr),
+
+                mask_counts: csmGetDrawableMaskCounts(model_ptr),
+                masks: csmGetDrawableMasks(model_ptr),
+
                 textures,
                 offset_x: 0.,
                 offset_y: 0.,
@@ -78,8 +87,8 @@ impl Renderer {
         context: &mut Context,
         mp: &mut Option<MotionPlayer>,
         mm: &mut MotionManager<'m>,
-        model_setting: &ModelSetting,
-        exp: &'m mut ExpMotion,
+        model_setting: &mut ModelSetting,
+        exp: &'m mut Option<ExpMotion>,
         em: &'m mut ExpressionManager<'m>,
         idle_motion: &'m mut CubismMotion,
         pose: &mut Pose,
@@ -90,9 +99,17 @@ impl Renderer {
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
         let mut last_frame = Instant::now();
 
+        // get eye_blink
+        let mut eye_blink = EyeBlink::new(model_setting);
+
         mm.start_motion_priority(idle_motion, true, 0);
-        em.qm.start_motion(exp, false);
+        if let Some(exp) = exp {
+            em.qm.start_motion(exp, false);
+        }
         pose.reset(&mut self.model);
+
+        let mut mask_buffer = vec![false; (context.width as usize) * (context.height as usize)];
+
         loop {
             let frame_start = Instant::now();
 
@@ -112,50 +129,39 @@ impl Renderer {
             }
             context.update()?;
             context.clear();
+            let needed = (context.width as usize) * (context.height as usize);
+            if mask_buffer.len() != needed {
+                mask_buffer.resize(needed, false);
+            }
+            mask_buffer.fill(false);
+            self.model.load_parameters();
 
-            // manipulation of model
             let delta_time = last_frame.elapsed().as_secs_f32();
             last_frame = Instant::now();
 
-            // motion
             mm.update_motion(&mut self.model, delta_time);
-
-            // expression
             em.update_motion(&mut self.model, delta_time);
-
-            // pose
+            eye_blink.update_parameters(&mut self.model, delta_time);
             pose.update_parameters(&mut self.model, delta_time);
-           
-            // TODO: physics
 
             // applying manioulation to Drawable
             unsafe {
                 csmResetDrawableDynamicFlags(self.model.model);
-                // updating vertex information
                 csmUpdateModel(self.model.model);
             }
 
-            // applying updated vertex inforamation to renderer
             let (dy_flags, opacities, vt_positions, render_orders) = unsafe {
                 let dy_flags = csmGetDrawableDynamicFlags(self.model.model);
                 let opacities = csmGetDrawableOpacities(self.model.model);
                 let vt_positions = csmGetDrawableVertexPositions(self.model.model);
                 let render_orders = csmGetDrawableRenderOrders(self.model.model);
+
+                self.multiply_colors = csmGetDrawableMultiplyColors(self.model.model);
+                self.screen_colors = csmGetDrawableScreenColors(self.model.model);
+
                 (dy_flags, opacities, vt_positions, render_orders)
             };
 
-            // rendering a model
-            let mask_counts = unsafe {
-                // Clipping
-                let mask_counts = csmGetDrawableMaskCounts(self.model.model);
-
-                // Multiply color, Screen color
-                self.multiply_colors = csmGetDrawableMultiplyColors(self.model.model);
-                self.screen_colors = csmGetDrawableScreenColors(self.model.model);
-                mask_counts
-            };
-
-            // sort by render_orders in ascending order
             let mut drawables: Vec<usize> = (0..self.count).collect();
             drawables.sort_by_key(|&i| unsafe { *render_orders.add(i) });
 
@@ -170,6 +176,78 @@ impl Renderer {
                     if opacity <= 0.001 {
                         continue;
                     }
+
+                    let mask_count = *self.mask_counts.add(drawable_idx) as usize;
+                    let has_mask = mask_count > 0;
+
+                    // --- Simple MASK operation ---
+                    if has_mask {
+                        mask_buffer.fill(false);
+                        let mask_indices_ptr = *self.masks.add(drawable_idx);
+
+                        for m in 0..mask_count {
+                            let mask_idx = *mask_indices_ptr.add(m) as usize;
+
+                            let m_index_count = *self.index_counts.add(mask_idx) as usize;
+                            let m_indices_ptr = *self.indices.add(mask_idx);
+                            let m_vertices_ptr = *vt_positions.add(mask_idx);
+
+                            for i in (0..m_index_count).step_by(3) {
+                                let i0 = *m_indices_ptr.add(i) as usize;
+                                let i1 = *m_indices_ptr.add(i + 1) as usize;
+                                let i2 = *m_indices_ptr.add(i + 2) as usize;
+
+                                let v0 = self.transform_to_screen(
+                                    *m_vertices_ptr.add(i0),
+                                    context.width,
+                                    context.height,
+                                );
+                                let v1 = self.transform_to_screen(
+                                    *m_vertices_ptr.add(i1),
+                                    context.width,
+                                    context.height,
+                                );
+                                let v2 = self.transform_to_screen(
+                                    *m_vertices_ptr.add(i2),
+                                    context.width,
+                                    context.height,
+                                );
+
+                                let triangle = Triangle::new(v0, v1, v2);
+                                let bbox = triangle.get_box();
+                                let min_x = bbox.minx.max(0.0) as u16;
+                                let max_x = bbox.maxx.min((context.width - 1) as f32) as u16;
+                                let min_y = bbox.miny.max(0.0) as u16;
+                                let max_y = bbox.maxy.min((context.height - 1) as f32) as u16;
+
+                                let total_area = triangle.signed_area();
+                                if total_area == 0.0 {
+                                    continue;
+                                }
+
+                                for y in min_y..=max_y {
+                                    for x in min_x..=max_x {
+                                        let p = Vec3 {
+                                            x: x as f32,
+                                            y: y as f32,
+                                            z: 0.0,
+                                        };
+                                        let w0 =
+                                            Triangle::new(v1, v2, p).signed_area() / total_area;
+                                        let w1 =
+                                            Triangle::new(v2, v0, p).signed_area() / total_area;
+                                        let w2 = 1.0 - w0 - w1;
+
+                                        if w0 >= 0.0 && w1 >= 0.0 && w2 >= 0.0 {
+                                            mask_buffer[(y as usize) * (context.width as usize)
+                                                + (x as usize)] = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // get texture
                     let tex_idx = *self.texture_indices.add(drawable_idx) as usize;
                     if tex_idx >= self.textures.len() {
@@ -215,15 +293,24 @@ impl Renderer {
                         let max_y = bbox.maxy.min((context.height - 1) as f32) as u16;
 
                         let total_area = triangle.signed_area();
+                        if total_area == 0.0 {
+                            continue;
+                        }
 
                         for y in min_y..=max_y {
                             for x in min_x..=max_x {
+                                if has_mask
+                                    && !mask_buffer
+                                        [(y as usize) * (context.width as usize) + (x as usize)]
+                                {
+                                    continue;
+                                }
+
                                 let p = Vec3 {
                                     x: x as f32,
                                     y: y as f32,
                                     z: 0.0,
                                 };
-
                                 let w0 = Triangle::new(v1, v2, p).signed_area() / total_area;
                                 let w1 = Triangle::new(v2, v0, p).signed_area() / total_area;
                                 let w2 = 1. - w0 - w1;
@@ -254,7 +341,6 @@ impl Renderer {
                                                     * (ASCII_CHARS.len() - 1) as f32)
                                                     .round()
                                                     as usize;
-
                                                 let char_index =
                                                     char_index.clamp(0, ASCII_CHARS.len() - 1);
                                                 let display_char = ASCII_CHARS[char_index];

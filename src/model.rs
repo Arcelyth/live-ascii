@@ -13,6 +13,8 @@ pub struct Model {
     pub param_max_vs: *const f32,
     pub param_min_vs: *const f32,
     pub param_default_vs: *const f32,
+    // for optimizing
+    pub param_id_to_index: HashMap<String, usize>,
 
     pub part_count: usize,
     pub part_ids: Vec<String>,
@@ -60,6 +62,10 @@ impl Model {
                 drawable_ids.push(id_str);
             }
 
+            let mut param_id_to_index = HashMap::with_capacity(param_count);
+            for (idx, id) in param_ids.iter().enumerate() {
+                param_id_to_index.insert(id.clone(), idx);
+            }
             Self {
                 model,
                 model_opacity: 1.,
@@ -69,6 +75,7 @@ impl Model {
                 param_max_vs: csmGetParameterMaximumValues(model),
                 param_min_vs: csmGetParameterMinimumValues(model),
                 param_default_vs: csmGetParameterDefaultValues(model),
+                param_id_to_index,
 
                 part_count,
                 part_ids,
@@ -124,7 +131,7 @@ impl Model {
     }
 
     pub fn get_parameter_index(&self, id: &str) -> Option<usize> {
-        self.param_ids.iter().position(|p| p == id)
+        self.param_id_to_index.get(id).copied()
     }
 
     pub fn get_parameter_value(&self, idx: usize) -> f32 {
@@ -221,7 +228,6 @@ impl Model {
         self.get_part_opacity(idx)
     }
 
-
     pub fn is_repeat(&self, parameter_index: usize) -> bool {
         if self.not_exist_param_values.contains_key(&parameter_index) {
             return false;
@@ -236,7 +242,6 @@ impl Model {
             is_repeat != 0
         }
     }
-
 
     pub fn get_parameter_repeat_value(&self, parameter_index: usize, mut value: f32) -> f32 {
         if self.not_exist_param_values.contains_key(&parameter_index) {
@@ -273,20 +278,15 @@ impl Model {
     }
 
     pub fn get_part_index(&mut self, id: &str) -> usize {
-        let part_count = unsafe { csmGetPartCount(self.model) } as usize;
-        for i in 0..part_count {
-            if id == self.part_ids[i] {
-                return i;
-            }
-        }
-        if let Some(i) = self.not_exist_part_id.get(&*id) {
-            return *i;
+        if let Some(pos) = self.part_ids.iter().position(|p| p == id) {
+            return pos;
         }
 
-        let i = part_count + self.not_exist_part_id.len();
-        self.not_exist_part_id.insert(id.to_string(), i);
-        self.not_exist_part_opacities[&i];
-        i
+        let next_idx = self.part_count + self.not_exist_part_id.len();
+        *self
+            .not_exist_part_id
+            .entry(id.to_string())
+            .or_insert(next_idx)
     }
 
     pub fn get_canvas_info(&self) -> (CsmVector2, CsmVector2, f32) {
@@ -318,8 +318,8 @@ impl Model {
         }
     }
 
-    pub fn add_parameter_value(&mut self, idx:usize, value: f32, weight: f32) {
-        self.set_parameter_value(idx,self.get_parameter_value(idx) + (value * weight), 1.);
+    pub fn add_parameter_value(&mut self, idx: usize, value: f32, weight: f32) {
+        self.set_parameter_value(idx, self.get_parameter_value(idx) + (value * weight), 1.);
     }
 
     pub fn multiply_parameter_value_by_id(&mut self, id: &str, value: f32, weight: f32) {
@@ -329,7 +329,10 @@ impl Model {
     }
 
     pub fn multiply_parameter_value(&mut self, idx: usize, value: f32, weight: f32) {
-        self.set_parameter_value(idx,self.get_parameter_value(idx) * (1. + (value - 1.) * weight), 1.);
+        self.set_parameter_value(
+            idx,
+            self.get_parameter_value(idx) * (1. + (value - 1.) * weight),
+            1.,
+        );
     }
-
 }
