@@ -311,4 +311,25 @@ impl Model {
             std::slice::from_raw_parts(csmGetDrawableRenderOrders(self.model), self.drawable_count)
         }
     }
+
+    pub fn add_parameter_value_by_id(&mut self, id: &str, value: f32, weight: f32) {
+        if let Some(index) = self.get_parameter_index(id) {
+            self.add_parameter_value(index, value, weight);
+        }
+    }
+
+    pub fn add_parameter_value(&mut self, idx:usize, value: f32, weight: f32) {
+        self.set_parameter_value(idx,self.get_parameter_value(idx) + (value * weight), 1.);
+    }
+
+    pub fn multiply_parameter_value_by_id(&mut self, id: &str, value: f32, weight: f32) {
+        if let Some(index) = self.get_parameter_index(id) {
+            self.multiply_parameter_value(index, value, weight);
+        }
+    }
+
+    pub fn multiply_parameter_value(&mut self, idx: usize, value: f32, weight: f32) {
+        self.set_parameter_value(idx,self.get_parameter_value(idx) * (1. + (value - 1.) * weight), 1.);
+    }
+
 }

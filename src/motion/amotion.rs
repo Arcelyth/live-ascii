@@ -2,14 +2,28 @@
 
 use std::f32;
 
+use crate::expression::exp::*;
 use crate::model::*;
 use crate::motion::json::*;
 use crate::motion::queue::*;
 
 pub trait ACubismMotion {
+    fn to_exp_motion(&self) -> Option<&ExpMotion> {
+        None
+    }
+    fn to_exp_motion_mut(&mut self) -> Option<&mut ExpMotion> {
+        None
+    }
+
     fn base(&self) -> &MotionBase;
     fn base_mut(&mut self) -> &mut MotionBase;
     fn update_parameters(&mut self, model: &mut Model, qe: &mut MotionQueueEntry, user_time_s: f32);
+    fn update_fade_weight(&self, entry: &mut MotionQueueEntry, user_time: f32) -> f32;
+    fn get_duration(&self) -> f32 {
+        -1.
+    }
+    fn adjust_end_time(&self, qe: &mut MotionQueueEntry);
+    fn setup_motion_queue_entry(&self, entry: &mut MotionQueueEntry, user_time: f32);
     fn get_fired_events(
         &mut self,
         before_check_time_seconds: f32,
@@ -82,52 +96,6 @@ impl CubismMotion {
         }
     }
 
-    pub fn adjust_end_time(&self, qe: &mut MotionQueueEntry) {
-        let duration = self.get_duration();
-        qe.end_time_seconds = if duration <= 0. {
-            -1.
-        } else {
-            qe.start_time_seconds + duration
-        };
-    }
-
-
-    pub fn setup_motion_queue_entry(&self, entry: &mut MotionQueueEntry, user_time: f32) {
-        if !entry.available || entry.finished || entry.started {
-            return;
-        }
-
-        entry.started = true;
-        entry.start_time_seconds = user_time - self.base.offset_seconds;
-        entry.fade_in_start_time_seconds = user_time;
-
-        if entry.end_time_seconds < 0.0 {
-            self.adjust_end_time(entry);
-        }
-    }
-
-    pub fn update_fade_weight(&self, entry: &mut MotionQueueEntry, user_time: f32) -> f32 {
-        let mut fade_weight = self.base.weight;
-
-        let fade_in = if self.base.fade_in_seconds <= 0.0 {
-            1.0
-        } else {
-            get_easing_sine(
-                (user_time - entry.fade_in_start_time_seconds) / self.base.fade_in_seconds,
-            )
-        };
-
-        let fade_out = if self.base.fade_out_seconds <= 0.0 || entry.end_time_seconds < 0.0 {
-            1.0
-        } else {
-            get_easing_sine((entry.end_time_seconds - user_time) / self.base.fade_out_seconds)
-        };
-
-        fade_weight = fade_weight * fade_in * fade_out;
-        entry.set_state(user_time, fade_weight);
-
-        fade_weight.clamp(0.0, 1.0)
-    }
 
     pub fn do_update_parameters(
         &mut self,
@@ -439,11 +407,10 @@ impl CubismMotion {
 }
 
 impl ACubismMotion for CubismMotion {
-
     fn base_mut(&mut self) -> &mut MotionBase {
         &mut self.base
     }
-    
+
     fn base(&self) -> &MotionBase {
         &self.base
     }
@@ -463,6 +430,60 @@ impl ACubismMotion for CubismMotion {
         if qe.end_time_seconds > 0. && qe.end_time_seconds < user_time_s {
             qe.finished = true;
         }
+    }
+
+    fn get_duration(&self) -> f32 {
+        if self.base.is_loop {
+            -1.
+        } else {
+            self.loop_duration_seconds
+        }
+    }
+
+    fn adjust_end_time(&self, qe: &mut MotionQueueEntry) {
+        let duration = self.get_duration();
+        qe.end_time_seconds = if duration <= 0. {
+            -1.
+        } else {
+            qe.start_time_seconds + duration
+        };
+    }
+
+    fn setup_motion_queue_entry(&self, entry: &mut MotionQueueEntry, user_time: f32) {
+        if !entry.available || entry.finished || entry.started {
+            return;
+        }
+
+        entry.started = true;
+        entry.start_time_seconds = user_time - self.base.offset_seconds;
+        entry.fade_in_start_time_seconds = user_time;
+
+        if entry.end_time_seconds < 0.0 {
+            self.adjust_end_time(entry);
+        }
+    }
+
+    fn update_fade_weight(&self, entry: &mut MotionQueueEntry, user_time: f32) -> f32 {
+        let mut fade_weight = self.base.weight;
+
+        let fade_in = if self.base.fade_in_seconds <= 0.0 {
+            1.0
+        } else {
+            get_easing_sine(
+                (user_time - entry.fade_in_start_time_seconds) / self.base.fade_in_seconds,
+            )
+        };
+
+        let fade_out = if self.base.fade_out_seconds <= 0.0 || entry.end_time_seconds < 0.0 {
+            1.0
+        } else {
+            get_easing_sine((entry.end_time_seconds - user_time) / self.base.fade_out_seconds)
+        };
+
+        fade_weight = fade_weight * fade_in * fade_out;
+        entry.set_state(user_time, fade_weight);
+
+        fade_weight.clamp(0.0, 1.0)
     }
 
     fn get_fired_events(
@@ -605,6 +626,6 @@ pub fn bezier_evaluate(
         + t * t * t * p3.value
 }
 
-fn get_easing_sine(v: f32) -> f32 {
+pub fn get_easing_sine(v: f32) -> f32 {
     (v * f32::consts::PI / 2.0).sin()
 }
