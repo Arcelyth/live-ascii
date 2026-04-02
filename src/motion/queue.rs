@@ -71,7 +71,7 @@ impl<'m> MotionQueueManager<'m> {
         }
     }
 
-    pub fn start_motion(&mut self, motion: &'m mut CubismMotion, auto_delete: bool) {
+    pub fn start_motion<A: ACubismMotion>(&mut self, motion: &'m mut A, auto_delete: bool) {
         for entry in &mut self.motions {
             entry.set_fade_out(entry.motion.base().fade_out_seconds);
         }

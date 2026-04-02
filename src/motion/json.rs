@@ -226,7 +226,7 @@ pub struct MotionData {
 
 impl MotionData {
     pub fn from_path(base_dir: &str, path: &str) -> Result<Self, Box<dyn Error>> {
-    let full_path = Path::new(base_dir).join(path);
+        let full_path = Path::new(base_dir).join(path);
         let data = fs::read_to_string(&full_path)
             .map_err(|e| format!("Failed to read file {:?}: {}", full_path, e))?;
 

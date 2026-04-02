@@ -7,6 +7,7 @@ use std::ptr;
 
 use live_ascii::context::*;
 use live_ascii::expression::exp::*;
+use live_ascii::expression::manager::*;
 use live_ascii::ffi::*;
 use live_ascii::model::*;
 use live_ascii::effect::pose::*;
@@ -75,7 +76,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-
     // initialize terminal
     let mut context = Context::new(false);
 
@@ -98,13 +98,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut renderer = Renderer::new(model_ptr, textures);
 
     // initialize expression
-    let expressions = &file_refs.expressions;
-    let mut exp = if expressions.is_empty() {
-        None
-    } else {
-        let full_exp_path = base_dir.join(&expressions[0].file);
-        Some(ExpressionMotion::new(full_exp_path.to_str().unwrap())?)
-    };
+    let exp_file = model_setting.get_expression_file_name(3).unwrap();
+    let mut em = ExpressionManager::new();
+    let mut exp = ExpMotion::from_path(base_dir.to_str().unwrap(), exp_file)?; 
+
+
     let motion_file = model_setting.get_motion_file_name("Idle", 0).unwrap();
     let motion_data = MotionData::from_path(base_dir.to_str().unwrap(), motion_file)?;
 
@@ -119,6 +117,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &mut mm,
         &model_setting,
         &mut exp,
+        &mut em,
         &mut idle_motion,
         &mut pose,
     )?;

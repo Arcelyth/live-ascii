@@ -17,6 +17,7 @@ use image::{DynamicImage, GenericImageView};
 use crate::context::*;
 use crate::effect::pose::*;
 use crate::expression::exp::*;
+use crate::expression::manager::*;
 use crate::ffi::*;
 use crate::geometry::*;
 use crate::model::*;
@@ -78,7 +79,8 @@ impl Renderer {
         mp: &mut Option<MotionPlayer>,
         mm: &mut MotionManager<'m>,
         model_setting: &ModelSetting,
-        exp: &mut Option<ExpressionMotion>,
+        exp: &'m mut ExpMotion,
+        em: &'m mut ExpressionManager<'m>,
         idle_motion: &'m mut CubismMotion,
         pose: &mut Pose,
     ) -> Result<(), Box<dyn Error>> {
@@ -89,6 +91,7 @@ impl Renderer {
         let mut last_frame = Instant::now();
 
         mm.start_motion_priority(idle_motion, true, 0);
+        em.qm.start_motion(exp, false);
         pose.reset(&mut self.model);
         loop {
             let frame_start = Instant::now();
@@ -114,11 +117,16 @@ impl Renderer {
             let delta_time = last_frame.elapsed().as_secs_f32();
             last_frame = Instant::now();
 
+            // motion
             mm.update_motion(&mut self.model, delta_time);
+
+            // expression
+            em.update_motion(&mut self.model, delta_time);
+
+            // pose
             pose.update_parameters(&mut self.model, delta_time);
-            //            if let Some(exp) = exp {
-            //                exp.apply(delta_time, self);
-            //            }
+           
+            // TODO: physics
 
             // applying manioulation to Drawable
             unsafe {
