@@ -28,7 +28,6 @@ use crate::motion::json::*;
 use crate::motion::manager::*;
 use crate::motion::player::*;
 
-const ASCII_CHARS: &[char] = &[' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
 
 pub struct Renderer {
     pub count: usize,
@@ -42,6 +41,7 @@ pub struct Renderer {
     indices: *const *const u16,
     multiply_colors: *const CsmVector4,
     screen_colors: *const CsmVector4,
+    shader: Box<[char]>,
 
     mask_counts: *const i32,
     masks: *const *const i32,
@@ -54,7 +54,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(model_ptr: *mut CsmModel, textures: Vec<DynamicImage>) -> Self {
+    pub fn new(model_ptr: *mut CsmModel, textures: Vec<DynamicImage>, shader: Box<[char]>) -> Self {
         let model = Model::new(model_ptr);
         unsafe {
             Self {
@@ -69,6 +69,7 @@ impl Renderer {
                 indices: csmGetDrawableIndices(model_ptr),
                 multiply_colors: csmGetDrawableMultiplyColors(model_ptr),
                 screen_colors: csmGetDrawableScreenColors(model_ptr),
+                shader, 
 
                 mask_counts: csmGetDrawableMaskCounts(model_ptr),
                 masks: csmGetDrawableMasks(model_ptr),
@@ -338,12 +339,12 @@ impl Renderer {
                                                     + 0.114 * (b as f32);
 
                                                 let char_index = (luminance / 255.0
-                                                    * (ASCII_CHARS.len() - 1) as f32)
+                                                    * (self.shader.len() - 1) as f32)
                                                     .round()
                                                     as usize;
                                                 let char_index =
-                                                    char_index.clamp(0, ASCII_CHARS.len() - 1);
-                                                let display_char = ASCII_CHARS[char_index];
+                                                    char_index.clamp(0, self.shader.len() - 1);
+                                                let display_char = self.shader[char_index];
 
                                                 context.set_pixel(x, y, display_char, (r, g, b));
                                             }

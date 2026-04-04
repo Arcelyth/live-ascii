@@ -28,6 +28,9 @@ struct Args {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let chars_10 = vec![' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
+    let chars_2= vec![' ', '.'];
+  
     let args = Args::parse();
     let mut model_setting = ModelSetting::new(&args.model_setting)?;
     let model3_path = Path::new(&args.model_setting).canonicalize()?;
@@ -95,14 +98,16 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut mm = MotionManager::new();
 
     // initialize renderer
-    let mut renderer = Renderer::new(model_ptr, textures);
+    let mut renderer = Renderer::new(model_ptr, textures, Box::new(chars_10).into_boxed_slice());
 
     // initialize expression
-    let exp_file = model_setting.get_expression_file_name(1);
+    let exp_file = model_setting.get_expression_file_name(2);
     let mut em = ExpressionManager::new();
     let mut exp = if let Some(ef) = exp_file {
-        Some(ExpMotion::from_path(base_dir.to_str().unwrap(),ef)?)
-    } else {None};
+        Some(ExpMotion::from_path(base_dir.to_str().unwrap(), ef)?)
+    } else {
+        None
+    };
 
     let motion_file = model_setting.get_motion_file_name("Idle", 0).unwrap();
     let motion_data = MotionData::from_path(base_dir.to_str().unwrap(), motion_file)?;
