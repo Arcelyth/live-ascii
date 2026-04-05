@@ -29,7 +29,6 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let chars_10 = vec![' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
-    let chars_2= vec![' ', '.'];
   
     let args = Args::parse();
     let mut model_setting = ModelSetting::new(&args.model_setting)?;
