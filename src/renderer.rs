@@ -13,6 +13,7 @@ use crossterm::{
     terminal::{self},
 };
 use image::{DynamicImage, GenericImageView};
+use ratatui::{Terminal, backend::CrosstermBackend, widgets::Paragraph};
 
 use crate::context::*;
 use crate::effect::eye_blink::*;
@@ -27,7 +28,7 @@ use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
 use crate::motion::player::*;
-
+use crate::ui::*;
 
 pub struct Renderer {
     pub count: usize,
@@ -69,7 +70,7 @@ impl Renderer {
                 indices: csmGetDrawableIndices(model_ptr),
                 multiply_colors: csmGetDrawableMultiplyColors(model_ptr),
                 screen_colors: csmGetDrawableScreenColors(model_ptr),
-                shader, 
+                shader,
 
                 mask_counts: csmGetDrawableMaskCounts(model_ptr),
                 masks: csmGetDrawableMasks(model_ptr),
@@ -96,6 +97,11 @@ impl Renderer {
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
+
+        // terminal
+        let backend = CrosstermBackend::new(stdout());
+        let mut terminal = Terminal::new(backend)?;
+
         let fps = 120.0;
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
         let mut last_frame = Instant::now();
@@ -124,6 +130,7 @@ impl Renderer {
                         KeyCode::Right => self.offset_x += 0.1,
                         KeyCode::Char('=') | KeyCode::Char('+') => self.scale *= 1.1,
                         KeyCode::Char('-') => self.scale *= 0.9,
+                        KeyCode::Char('m') => context.show_motions = !context.show_motions,
                         _ => {}
                     }
                 }
@@ -357,8 +364,17 @@ impl Renderer {
                 }
             }
 
-            context.flush(true)?;
-            stdout().flush()?;
+            //            context.flush(true)?;
+            //            stdout().flush()?;
+
+            // draw ui
+            terminal.draw(|f| match ui(f, context) {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("{:?}", e);
+                }
+            })?;
+
             let elapsed = frame_start.elapsed();
             if elapsed < target_frame_time {
                 std::thread::sleep(target_frame_time - elapsed);

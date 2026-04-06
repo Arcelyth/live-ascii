@@ -1,10 +1,17 @@
+use ratatui::widgets::ListState;
+
+use std::error::Error;
+use std::io::stdout;
+
 use crossterm::{
     QueueableCommand, cursor, queue,
     style::{Color, PrintStyledContent, Stylize},
     terminal,
 };
-use std::error::Error;
-use std::io::stdout;
+use ratatui::text::{Line, Span, Text};
+use ratatui::style::{Color as RatatuiColor, Style};
+
+use crate::model_setting::ModelSetting;
 
 pub struct Context {
     pub width: u16,
@@ -12,15 +19,21 @@ pub struct Context {
     // RGB
     pub frame_buffer: Vec<(char, (u8, u8, u8))>,
     pub image: bool,
+    pub show_motions: bool,
+    pub model_setting: ModelSetting,
+    pub model_list_state: ListState,
 }
 
 impl Context {
-    pub fn new(image: bool) -> Self {
+    pub fn new(image: bool, model_setting: ModelSetting) -> Self {
         Self {
             width: 0,
             height: 0,
             frame_buffer: vec![],
             image,
+            show_motions: false,
+            model_setting,
+            model_list_state: ListState::default(),
         }
     }
 
@@ -78,5 +91,24 @@ impl Context {
 
     pub fn clear(&mut self) {
         self.frame_buffer.fill((' ', (0, 0, 0)));
+    }
+
+    pub fn buffer_to_text(&self) -> Text<'static> {
+        let mut lines = Vec::with_capacity(self.height as usize);
+
+        for y in 0..self.height {
+            let mut spans = Vec::with_capacity(self.width as usize);
+            for x in 0..self.width {
+                let idx = (y * self.width + x) as usize;
+                if let Some((ch, (r, g, b))) = self.frame_buffer.get(idx) {
+                    spans.push(Span::styled(
+                        ch.to_string(),
+                        Style::default().fg(RatatuiColor::Rgb(*r, *g, *b)),
+                    ));
+                }
+            }
+            lines.push(Line::from(spans));
+        }
+        Text::from(lines)
     }
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use std::path::Path;
 use std::error::Error;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,6 @@ pub struct ModelSetting {
     #[serde(default)]
     pub layout: Option<Layout>,
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(rename_all = "PascalCase")]
@@ -72,8 +71,6 @@ pub struct MotionRef {
     pub fade_out_time: f32,
 }
 
-
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialOrd, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct HitArea {
@@ -91,7 +88,6 @@ pub struct Layout {
     width: f32,
     height: f32,
 }
-
 
 impl ModelSetting {
     pub fn new(path: &str) -> Result<Self, Box<dyn Error>> {
@@ -136,7 +132,9 @@ impl ModelSetting {
     }
 
     pub fn is_exist_motion_sound_file(&self, group_name: &str, index: usize) -> bool {
-        self.file_references.motions.get(group_name)
+        self.file_references
+            .motions
+            .get(group_name)
             .and_then(|group| group.get(index))
             .and_then(|motion| motion.sound.as_ref())
             .is_some()
@@ -171,7 +169,9 @@ impl ModelSetting {
     }
 
     pub fn get_texture_directory(&self) -> Option<&Path> {
-        self.file_references.textures.first()
+        self.file_references
+            .textures
+            .first()
             .and_then(|p| p.parent())
     }
 
@@ -208,11 +208,17 @@ impl ModelSetting {
     }
 
     pub fn get_expression_name(&self, index: usize) -> Option<&str> {
-        self.file_references.expressions.get(index).map(|e| e.name.as_str())
+        self.file_references
+            .expressions
+            .get(index)
+            .map(|e| e.name.as_str())
     }
 
     pub fn get_expression_file_name(&self, index: usize) -> Option<&str> {
-        self.file_references.expressions.get(index).map(|e| e.file.as_str())
+        self.file_references
+            .expressions
+            .get(index)
+            .map(|e| e.file.as_str())
     }
 
     pub fn get_motion_group_count(&self) -> usize {
@@ -224,11 +230,17 @@ impl ModelSetting {
     }
 
     pub fn get_motion_count(&self, group_name: &str) -> usize {
-        self.file_references.motions.get(group_name).map_or(0, |m| m.len())
+        self.file_references
+            .motions
+            .get(group_name)
+            .map_or(0, |m| m.len())
     }
 
     fn get_motion(&self, group_name: &str, index: usize) -> Option<&MotionRef> {
-        self.file_references.motions.get(group_name).and_then(|group| group.get(index))
+        self.file_references
+            .motions
+            .get(group_name)
+            .and_then(|group| group.get(index))
     }
 
     pub fn get_motion_file_name(&self, group_name: &str, index: usize) -> Option<&str> {
@@ -236,15 +248,27 @@ impl ModelSetting {
     }
 
     pub fn get_motion_sound_file_name(&self, group_name: &str, index: usize) -> Option<&str> {
-        self.get_motion(group_name, index).and_then(|m| m.sound.as_deref())
+        self.get_motion(group_name, index)
+            .and_then(|m| m.sound.as_deref())
     }
 
     pub fn get_motion_fade_in_time_value(&self, group_name: &str, index: usize) -> f32 {
-        self.get_motion(group_name, index).map_or(-1.0, |m| m.fade_in_time)
+        self.get_motion(group_name, index)
+            .map_or(-1.0, |m| m.fade_in_time)
     }
 
     pub fn get_motion_fade_out_time_value(&self, group_name: &str, index: usize) -> f32 {
-        self.get_motion(group_name, index).map_or(-1.0, |m| m.fade_out_time)
+        self.get_motion(group_name, index)
+            .map_or(-1.0, |m| m.fade_out_time)
+    }
+
+    pub fn get_all_motion_names(&self) -> Vec<&str> {
+        self.file_references
+            .motions
+            .values()
+            .flat_map(|group| group.iter())
+            .map(|m| m.file.as_str())
+            .collect()
     }
 
     pub fn get_layout(&self) -> Option<&Layout> {
@@ -272,7 +296,6 @@ impl ModelSetting {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -286,7 +309,7 @@ mod tests {
                 moc: Some("model.moc3".into()),
                 textures: vec!["texture_00.png".into()],
                 physics: Some("model.physics3.json".into()),
-                display_info: None, 
+                display_info: None,
                 pose: Some("model.pose3.json".into()),
                 expressions: vec![
                     Expression {
@@ -343,7 +366,7 @@ mod tests {
                     name: "body".into(),
                 },
             ],
-            layout: None
+            layout: None,
         };
         assert_eq!(model3, res);
     }
