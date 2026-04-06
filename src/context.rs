@@ -1,7 +1,8 @@
-use ratatui::widgets::ListState;
-
 use std::error::Error;
 use std::io::stdout;
+use std::sync::Arc;
+
+use ratatui::widgets::ListState;
 
 use crossterm::{
     QueueableCommand, cursor, queue,
@@ -13,27 +14,36 @@ use ratatui::style::{Color as RatatuiColor, Style};
 
 use crate::model_setting::ModelSetting;
 
+pub enum Panel {
+    None,
+    Motions,
+}
+
 pub struct Context {
     pub width: u16,
     pub height: u16,
     // RGB
     pub frame_buffer: Vec<(char, (u8, u8, u8))>,
     pub image: bool,
+    pub base_dir: Arc<str>,
     pub show_motions: bool,
     pub model_setting: ModelSetting,
-    pub model_list_state: ListState,
+    pub motion_list_state: ListState,
+    pub current_panel: Panel,
 }
 
 impl Context {
-    pub fn new(image: bool, model_setting: ModelSetting) -> Self {
+    pub fn new(image: bool, model_setting: ModelSetting, base_dir: &str) -> Self {
         Self {
             width: 0,
             height: 0,
             frame_buffer: vec![],
             image,
+            base_dir: base_dir.into(), 
             show_motions: false,
             model_setting,
-            model_list_state: ListState::default(),
+            motion_list_state: ListState::default().with_selected(Some(1)),
+            current_panel: Panel::None,
         }
     }
 

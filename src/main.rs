@@ -79,7 +79,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // initialize terminal
-    let mut context = Context::new(false, model_setting.clone());
+    let mut context = Context::new(false, model_setting.clone(), base_dir.to_str().unwrap());
 
     // initialize motionplayer
     // TODO: handle more motions
@@ -118,12 +118,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     renderer.render(
         &mut context,
-        &mut mp,
         &mut mm,
         &mut model_setting,
-        &mut exp,
+        exp,
         &mut em,
-        &mut idle_motion,
+        idle_motion,
         &mut pose,
     )?;
 

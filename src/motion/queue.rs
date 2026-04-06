@@ -2,9 +2,9 @@ use crate::model::*;
 use crate::motion::amotion::*;
 use crate::motion::json::*;
 
-pub struct MotionQueueEntry<'m> {
+pub struct MotionQueueEntry {
     pub auto_delete: bool,
-    pub motion: &'m mut dyn ACubismMotion,
+    pub motion: Box<dyn ACubismMotion>,
     pub available: bool,
     pub finished: bool,
     pub started: bool,
@@ -18,11 +18,11 @@ pub struct MotionQueueEntry<'m> {
     pub is_triggered_fade_out: bool,
 }
 
-impl<'m> MotionQueueEntry<'m> {
-    pub fn new(motion: &'m mut dyn ACubismMotion) -> Self {
+impl MotionQueueEntry {
+    pub fn new(motion: Box<dyn ACubismMotion>) -> Self {
         Self {
             auto_delete: false,
-            motion: motion,
+            motion,
             available: true,
             finished: false,
             started: false,
@@ -56,13 +56,13 @@ impl<'m> MotionQueueEntry<'m> {
     }
 }
 
-pub struct MotionQueueManager<'m> {
+pub struct MotionQueueManager {
     pub user_time_seconds: f32,
-    pub motions: Vec<MotionQueueEntry<'m>>,
+    pub motions: Vec<MotionQueueEntry>,
     pub event_callback: Option<Box<dyn Fn(&str)>>,
 }
 
-impl<'m> MotionQueueManager<'m> {
+impl MotionQueueManager {
     pub fn new() -> Self {
         Self {
             user_time_seconds: 0.,
@@ -71,11 +71,11 @@ impl<'m> MotionQueueManager<'m> {
         }
     }
 
-    pub fn start_motion<A: ACubismMotion>(&mut self, motion: &'m mut A, auto_delete: bool) {
+    pub fn start_motion<A: ACubismMotion + 'static>(&mut self, motion: A, auto_delete: bool) {
         for entry in &mut self.motions {
             entry.set_fade_out(entry.motion.base().fade_out_seconds);
         }
-        let mut m_entry = MotionQueueEntry::new(motion);
+        let mut m_entry = MotionQueueEntry::new(Box::new(motion));
         m_entry.auto_delete = auto_delete;
         self.motions.push(m_entry);
     }
@@ -88,7 +88,9 @@ impl<'m> MotionQueueManager<'m> {
         for (i, entry) in self.motions.iter_mut().enumerate() {
             let entry_ptr = entry as *mut MotionQueueEntry;
             unsafe {
-                entry.motion.update_parameters(model, &mut *entry_ptr, user_time_s);
+                entry
+                    .motion
+                    .update_parameters(model, &mut *entry_ptr, user_time_s);
             }
             updated = true;
 
@@ -136,5 +138,3 @@ impl<'m> MotionQueueManager<'m> {
         self.motions.clear();
     }
 }
-
-

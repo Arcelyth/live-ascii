@@ -15,7 +15,7 @@ pub fn ui(frame: &mut Frame, context: &mut Context) -> Result<(), Box<dyn Error>
     frame.render_widget(model_widget, area);
 
     if context.show_motions{
-        let list_area = Rect::new(2, 2, 30, 10);
+        let list_area = Rect::new(2, 2, 36, 15);
 
         let items: Vec<ListItem> = context.model_setting.get_all_motion_names()
             .iter()
@@ -33,10 +33,10 @@ pub fn ui(frame: &mut Frame, context: &mut Context) -> Result<(), Box<dyn Error>
                     .bg(Color::Yellow)
                     .fg(Color::Black),
             )
-            .highlight_symbol(">> ");
+            .highlight_symbol("> ");
 
         frame.render_widget(Clear, list_area);
-        frame.render_stateful_widget(list_widget, list_area, &mut context.model_list_state);
+        frame.render_stateful_widget(list_widget, list_area, &mut context.motion_list_state);
     }
 
     Ok(())

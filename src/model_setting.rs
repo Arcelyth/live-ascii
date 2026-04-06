@@ -263,12 +263,14 @@ impl ModelSetting {
     }
 
     pub fn get_all_motion_names(&self) -> Vec<&str> {
-        self.file_references
+        let mut names: Vec<&str> = self.file_references
             .motions
             .values()
             .flat_map(|group| group.iter())
             .map(|m| m.file.as_str())
-            .collect()
+            .collect::<Vec<&str>>();
+        names.sort();
+        names
     }
 
     pub fn get_layout(&self) -> Option<&Layout> {

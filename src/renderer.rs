@@ -84,15 +84,14 @@ impl Renderer {
         }
     }
 
-    pub fn render<'m>(
+    pub fn render(
         &mut self,
         context: &mut Context,
-        mp: &mut Option<MotionPlayer>,
-        mm: &mut MotionManager<'m>,
+        mm: &mut MotionManager,
         model_setting: &mut ModelSetting,
-        exp: &'m mut Option<ExpMotion>,
-        em: &'m mut ExpressionManager<'m>,
-        idle_motion: &'m mut CubismMotion,
+        exp: Option<ExpMotion>,
+        em: &mut ExpressionManager,
+        idle_motion: CubismMotion,
         pose: &mut Pose,
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
@@ -122,16 +121,47 @@ impl Renderer {
 
             if event::poll(Duration::from_millis(1))? {
                 if let Event::Key(KeyEvent { code, .. }) = event::read()? {
-                    match code {
-                        KeyCode::Char('q') => break,
-                        KeyCode::Up => self.offset_y -= 0.1,
-                        KeyCode::Down => self.offset_y += 0.1,
-                        KeyCode::Left => self.offset_x -= 0.1,
-                        KeyCode::Right => self.offset_x += 0.1,
-                        KeyCode::Char('=') | KeyCode::Char('+') => self.scale *= 1.1,
-                        KeyCode::Char('-') => self.scale *= 0.9,
-                        KeyCode::Char('m') => context.show_motions = !context.show_motions,
-                        _ => {}
+                    match context.current_panel {
+                        Panel::None => match code {
+                            KeyCode::Char('q') => break,
+                            KeyCode::Up => self.offset_y -= 0.1,
+                            KeyCode::Down => self.offset_y += 0.1,
+                            KeyCode::Left => self.offset_x -= 0.1,
+                            KeyCode::Right => self.offset_x += 0.1,
+                            KeyCode::Char('=') | KeyCode::Char('+') => self.scale *= 1.1,
+                            KeyCode::Char('-') => self.scale *= 0.9,
+                            KeyCode::Char('m') => {
+                                context.show_motions = true;
+                                if context.show_motions {
+                                    context.current_panel = Panel::Motions;
+                                }
+                            }
+                            _ => {}
+                        },
+                        Panel::Motions => match code {
+                            KeyCode::Char('q') => {
+                                context.current_panel = Panel::None;
+                                context.show_motions = false;
+                            }
+                            KeyCode::Up => context.motion_list_state.select_previous(),
+                            KeyCode::Down => context.motion_list_state.select_next(),
+                            KeyCode::Enter => {
+                                if let Some(idx) = context.motion_list_state.selected() {
+                                    let file = model_setting.get_all_motion_names()[idx];
+                                    let motion_data =
+                                        MotionData::from_path(&context.base_dir, file)?;
+                                    let motion = CubismMotion::new(motion_data);
+                                    mm.start_motion_priority(motion, true, 2);
+                                }
+                            }
+                            KeyCode::Char('m') => {
+                                context.show_motions = !context.show_motions;
+                                if context.show_motions {
+                                    context.current_panel = Panel::Motions;
+                                }
+                            }
+                            _ => {}
+                        },
                     }
                 }
             }

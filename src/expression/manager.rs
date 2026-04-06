@@ -5,15 +5,15 @@ use crate::model::Model;
 use crate::motion::amotion::*;
 use crate::motion::queue::*;
 
-pub struct ExpressionManager<'m> {
-    pub qm: MotionQueueManager<'m>,
+pub struct ExpressionManager {
+    pub qm: MotionQueueManager,
     current_prior: usize,
     reserve_prior: usize,
     expression_parameters: Vec<ExpValue>,
     fade_weights: Vec<f32>,
 }
 
-impl<'m> ExpressionManager<'m> {
+impl ExpressionManager {
     pub fn new() -> Self {
         Self {
             qm: MotionQueueManager::new(),
