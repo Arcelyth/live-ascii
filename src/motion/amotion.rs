@@ -47,7 +47,7 @@ impl MotionBase {
     pub fn new() -> Self {
         Self {
             fade_in_seconds: -1.,
-            fade_out_seconds: 1.,
+            fade_out_seconds: -1.,
             weight: 1.,
             offset_seconds: 0.,
             is_loop: true,
@@ -152,6 +152,9 @@ impl CubismMotion {
             if let MotionBehavior::MotionBehaviorV2 = self.motion_behavior {
                 duration += 1.0 / self.source_frame_rate;
             }
+            if duration <= 0.0 {
+                duration = 0.001;
+            }
             while time > duration {
                 time -= duration;
             }
@@ -209,8 +212,7 @@ impl CubismMotion {
                     }
 
                     if model.is_repeat(parameter_index) {
-                        current_value =
-                            model.get_parameter_repeat_value(parameter_index, current_value);
+                        current_value = model.get_parameter_repeat_value(parameter_index, current_value);
                     }
 
                     let final_value;
@@ -223,16 +225,14 @@ impl CubismMotion {
                             1.0
                         } else {
                             get_easing_sine(
-                                (user_time_seconds - motion_queue_e.fade_in_start_time_seconds)
+                                (user_time_seconds - motion_queue_e.fade_in_start_time_seconds) 
                                     / curve.fade_in_time,
                             )
                         };
 
                         let fout = if curve.fade_out_time < 0.0 {
                             tmp_fade_out
-                        } else if curve.fade_out_time == 0.0
-                            || motion_queue_e.end_time_seconds < 0.0
-                        {
+                        } else if curve.fade_out_time == 0.0 || motion_queue_e.end_time_seconds < 0.0 {
                             1.0
                         } else {
                             get_easing_sine(
@@ -617,7 +617,5 @@ pub fn bezier_evaluate(
 }
 
 pub fn get_easing_sine(v: f32) -> f32 {
-    (v * f32::consts::PI / 2.0).sin()
+    (v.clamp(0.0, 1.0) * f32::consts::PI / 2.0).sin()
 }
-
-

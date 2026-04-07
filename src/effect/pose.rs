@@ -100,10 +100,10 @@ impl Pose {
         Ok(Self {
             part_groups,
             part_group_counts,
-            fade_time_seconds: p3
-                .fade_in_time
-                .unwrap_or(Self::DEFAULT_FADE_IN_SECONDS)
-                .max(0.0),
+            fade_time_seconds: match p3.fade_in_time {
+                Some(v) if v >= 0.0 => v,
+                _ => Self::DEFAULT_FADE_IN_SECONDS,
+            },
         })
     }
 
@@ -211,6 +211,8 @@ impl Pose {
 
                 if current_opacity > a1 {
                     model.set_part_opacity(part_idx, a1);
+                } else {
+                    model.set_part_opacity(part_idx, current_opacity);
                 }
             }
         }

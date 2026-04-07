@@ -135,12 +135,10 @@ impl Model {
     }
 
     pub fn get_parameter_value(&self, idx: usize) -> f32 {
-        unsafe {
-            if let Some(v) = self.not_exist_param_values.get(&idx) {
-                *v
-            } else {
-                *self.param_values.add(idx)
-            }
+        if idx >= self.param_count {
+            *self.not_exist_param_values.get(&idx).unwrap_or(&0.0)
+        } else {
+            unsafe { *self.param_values.add(idx) }
         }
     }
 
@@ -199,10 +197,10 @@ impl Model {
     }
 
     pub fn set_part_opacity(&mut self, idx: usize, opacity: f32) {
-        unsafe {
-            if let Some(_) = self.not_exist_part_opacities.get(&idx) {
-                self.not_exist_part_opacities.insert(idx, opacity);
-            } else {
+        if idx >= self.part_count {
+            self.not_exist_part_opacities.insert(idx, opacity);
+        } else {
+            unsafe {
                 *self.part_opacities.add(idx) = opacity;
             }
         }
@@ -213,13 +211,11 @@ impl Model {
         self.set_part_opacity(idx, opacity);
     }
 
-    pub fn get_part_opacity(&mut self, idx: usize) -> f32 {
-        unsafe {
-            if let Some(v) = self.not_exist_part_opacities.get(&idx) {
-                *v
-            } else {
-                *self.part_opacities.add(idx)
-            }
+    pub fn get_part_opacity(&self, idx: usize) -> f32 {
+        if idx >= self.part_count {
+            *self.not_exist_part_opacities.get(&idx).unwrap_or(&0.0)
+        } else {
+            unsafe { *self.part_opacities.add(idx) }
         }
     }
 
@@ -338,5 +334,28 @@ impl Model {
 
     pub fn get_all_parameter_ids(&self) -> Vec<&str> {
         self.param_ids.iter().map(|p| p.as_str()).collect()
+    }
+
+    pub fn get_all_parameters(&self) -> Vec<(&str, f32)> {
+        let mut result: Vec<(&str, f32)> = self
+            .param_id_to_index
+            .iter()
+            .map(|(id, &idx)| (id.as_str(), self.get_parameter_value(idx)))
+            .collect();
+
+        result.sort_by(|a, b| a.0.cmp(&b.0));
+        result
+    }
+
+    pub fn get_all_part_opacities(&self) -> Vec<(&str, f32)> {
+        let mut result = Vec::with_capacity(self.part_count);
+
+        for (i, id) in self.part_ids.iter().enumerate() {
+            let opacity = self.get_part_opacity(i);
+            result.push((id.as_str(), opacity));
+        }
+
+        result.sort_by(|a, b| a.0.cmp(&b.0));
+        result
     }
 }

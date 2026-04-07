@@ -22,6 +22,7 @@ pub enum OpPanel {
 pub enum DebugPanel {
     None,
     Parameters,
+    PartOpacities,
 }
 
 pub enum Panel {

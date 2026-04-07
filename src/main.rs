@@ -15,7 +15,6 @@ use live_ascii::model_setting::ModelSetting;
 use live_ascii::motion::amotion::*;
 use live_ascii::motion::json::*;
 use live_ascii::motion::manager::*;
-use live_ascii::motion::player::*;
 
 use live_ascii::renderer::*;
 use live_ascii::utils::*;
@@ -88,13 +87,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut renderer = Renderer::new(model_ptr, textures, Box::new(chars_10).into_boxed_slice());
 
     // initialize expression
-    let exp_file = model_setting.get_expression_file_name(2);
     let mut em = ExpressionManager::new();
-    let exp = if let Some(ef) = exp_file {
-        Some(ExpMotion::from_path(base_dir.to_str().unwrap(), ef)?)
-    } else {
-        None
-    };
+//    let exp = if let Some(ef) = exp_file {
+//        Some(ExpMotion::from_path(base_dir.to_str().unwrap(), ef)?)
+//    } else {
+//        None
+//    };
 
     let mut pos = if let Some(pose_file) = model_setting.get_pose_file_name() {
         Some(Pose::from_path(
@@ -109,7 +107,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         &mut context,
         &mut mm,
         &mut model_setting,
-        exp,
         &mut em,
         &mut pos,
     )?;

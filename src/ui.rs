@@ -20,7 +20,7 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
     let motion_list_border_hl_fg = Color::White;
 
     let param_list_border_fg = Color::Rgb(217, 147, 61);
-    let param_list_border_hl_bg = Color::Rgb(243, 222, 195);
+    let param_list_border_hl_bg = Color::Rgb(199, 188, 137);
     let param_list_border_hl_fg = Color::White;
 
     let selected_border = Color::Rgb(241, 243, 195);
@@ -44,7 +44,8 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .style(Style::default().fg(border_fg).add_modifier(Modifier::BOLD))
+                        .border_style(Style::default().fg(border_fg))
+                        .style(Style::default().fg(motion_list_border_fg).add_modifier(Modifier::BOLD))
                         .title(" Motion List "),
                 )
                 .highlight_style(
@@ -70,32 +71,62 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
             };
 
             let items: Vec<ListItem> = model
-                .get_all_parameter_ids()
+                .get_all_parameters()
                 .iter()
-                .map(|m| ListItem::new(*m))
+                .map(|m| ListItem::new(format!("{:35}{:.4}", m.0, m.1)))
                 .collect();
 
             let list_widget = List::new(items)
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .style(
-                            Style::default()
-                                .fg(border_fg)
-                                .add_modifier(Modifier::BOLD),
-                        )
-                        .title(" Parameters IDs "),
+                        .border_style(Style::default().fg(border_fg))
+                        .style(Style::default().fg(param_list_border_fg).add_modifier(Modifier::BOLD))
+                        .title(" Parameters "),
                 )
                 .highlight_style(
                     Style::default()
-                        .bg(motion_list_border_hl_bg)
-                        .fg(motion_list_border_hl_fg),
+                        .bg(param_list_border_hl_bg)
+                        .fg(param_list_border_hl_fg),
                 )
                 .highlight_symbol("> ");
 
             frame.render_widget(Clear, list_area);
             frame.render_stateful_widget(list_widget, list_area, &mut context.param_list_state);
         }
+        DebugPanel::PartOpacities => {
+            let list_area = Rect::new(2, 20, 45, 20);
+            let border_fg = if let Panel::Debug = context.current_panel {
+                selected_border
+            } else {
+                param_list_border_fg
+            };
+
+            let items: Vec<ListItem> = model
+                .get_all_part_opacities()
+                .iter()
+                .map(|m| ListItem::new(format!("{:35}{:.4}", m.0, m.1)))
+                .collect();
+
+            let list_widget = List::new(items)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(border_fg))
+                        .style(Style::default().fg(param_list_border_fg).add_modifier(Modifier::BOLD))
+                        .title(" Part Opacities "),
+                )
+                .highlight_style(
+                    Style::default()
+                        .bg(param_list_border_hl_bg)
+                        .fg(param_list_border_hl_fg),
+                )
+                .highlight_symbol("> ");
+
+            frame.render_widget(Clear, list_area);
+            frame.render_stateful_widget(list_widget, list_area, &mut context.param_list_state);
+        }
+
         _ => {}
     }
 

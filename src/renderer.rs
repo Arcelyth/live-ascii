@@ -27,7 +27,6 @@ use crate::model_setting::ModelSetting;
 use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
-use crate::motion::player::*;
 use crate::ui::*;
 
 pub struct Renderer {
@@ -89,7 +88,6 @@ impl Renderer {
         context: &mut Context,
         mm: &mut MotionManager,
         model_setting: &mut ModelSetting,
-        exp: Option<ExpMotion>,
         em: &mut ExpressionManager,
         pose: &mut Option<Pose>,
     ) -> Result<(), Box<dyn Error>> {
@@ -100,18 +98,17 @@ impl Renderer {
         let backend = CrosstermBackend::new(stdout());
         let mut terminal = Terminal::new(backend)?;
 
-        let fps = 120.0;
+        let fps = 60.0;
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
         let mut last_frame = Instant::now();
 
         // get eye_blink
         let mut eye_blink = EyeBlink::new(model_setting);
 
-        //        mm.start_motion_priority(idle_motion, true, 0);
-        if let Some(exp) = exp {
-            em.qm.start_motion(exp, false);
-        }
-
+        //        if let Some(exp) = exp {
+        //            em.qm.start_motion(exp, false);
+        //        }
+        //
         if let Some(pose) = pose {
             pose.reset(&mut self.model);
         }
@@ -138,18 +135,26 @@ impl Renderer {
                             }
                             KeyCode::Char('p') => {
                                 context.current_panel = Panel::Debug;
-                                context.current_debug_panel = DebugPanel::Parameters;
+                                if let DebugPanel::None = context.current_debug_panel {
+                                    context.current_debug_panel = DebugPanel::Parameters;
+                                }
                             }
+
                             _ => {}
                         },
                         Panel::Op => match context.current_op_panel {
                             OpPanel::Motions => match code {
                                 KeyCode::Char('q') | KeyCode::Esc => {
                                     context.current_panel = Panel::None;
+                                    context.current_op_panel = OpPanel::None;
                                 }
                                 KeyCode::Up => context.motion_list_state.select_previous(),
                                 KeyCode::Down => context.motion_list_state.select_next(),
                                 KeyCode::Enter => {
+                                    if let Some(p) = pose {
+                                        p.reset(&mut self.model);
+                                    }
+
                                     if let Some(idx) = context.motion_list_state.selected() {
                                         let file = model_setting.get_all_motion_names()[idx];
                                         let motion_data =
@@ -164,36 +169,31 @@ impl Renderer {
                                 }
                                 KeyCode::Char('p') => {
                                     context.current_panel = Panel::Debug;
-                                    context.current_debug_panel = DebugPanel::Parameters;
+                                    if let DebugPanel::None = context.current_debug_panel {
+                                        context.current_debug_panel = DebugPanel::Parameters;
+                                    }
                                 }
                                 _ => {}
                             },
                             OpPanel::None => {}
                         },
                         Panel::Debug => match context.current_debug_panel {
-                            DebugPanel::Parameters => match code {
+                            DebugPanel::Parameters | DebugPanel::PartOpacities => match code {
                                 KeyCode::Char('q') | KeyCode::Esc => {
                                     context.current_panel = Panel::None;
+                                    context.current_debug_panel = DebugPanel::None;
+                                }
+                                KeyCode::Char('1') => {
+                                    context.current_debug_panel = DebugPanel::Parameters;
+                                }
+                                KeyCode::Char('2') => {
+                                    context.current_debug_panel = DebugPanel::PartOpacities;
                                 }
                                 KeyCode::Up => context.param_list_state.select_previous(),
                                 KeyCode::Down => context.param_list_state.select_next(),
-                                KeyCode::Enter => {
-                                    if let Some(idx) = context.param_list_state.selected() {
-                                        let file = model_setting.get_all_motion_names()[idx];
-                                        let motion_data =
-                                            MotionData::from_path(&context.base_dir, file)?;
-                                        let motion = CubismMotion::new(motion_data);
-                                        mm.start_motion_priority(motion, true, 2);
-                                    }
-                                }
                                 KeyCode::Char('m') => {
                                     context.current_panel = Panel::Op;
                                     context.current_op_panel = OpPanel::Motions;
-                                }
-
-                                KeyCode::Char('p') => {
-                                    context.current_panel = Panel::Debug;
-                                    context.current_debug_panel = DebugPanel::Parameters;
                                 }
                                 _ => {}
                             },
@@ -215,12 +215,14 @@ impl Renderer {
             last_frame = Instant::now();
 
             mm.update_motion(&mut self.model, delta_time);
-            em.update_motion(&mut self.model, delta_time);
+            //            em.update_motion(&mut self.model, delta_time);
             eye_blink.update_parameters(&mut self.model, delta_time);
 
             if let Some(pose) = pose {
                 pose.update_parameters(&mut self.model, delta_time);
             }
+
+            self.model.save_parameters();
 
             // applying manioulation to Drawable
             unsafe {
@@ -433,9 +435,6 @@ impl Renderer {
                     }
                 }
             }
-
-            //            context.flush(true)?;
-            //            stdout().flush()?;
 
             // draw ui
             terminal.draw(|f| match ui(f, context, &self.model) {
