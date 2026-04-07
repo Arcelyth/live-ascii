@@ -335,4 +335,8 @@ impl Model {
             1.,
         );
     }
+
+    pub fn get_all_parameter_ids(&self) -> Vec<&str> {
+        self.param_ids.iter().map(|p| p.as_str()).collect()
+    }
 }

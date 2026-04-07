@@ -394,16 +394,6 @@ impl CubismMotion {
         return None;
     }
 
-    // TODO
-    //    pub fn get_model_opacity_id(idx: usize) -> String {
-    //        let curve = self.motion_data.curves[idx];
-    //        if curve.target_type == CurveTargetType::Model {
-    //            if curve.id == "Opacity" {
-    //
-    //                return
-    //            }
-    //        }
-    //    }
 }
 
 impl ACubismMotion for CubismMotion {
@@ -629,3 +619,5 @@ pub fn bezier_evaluate(
 pub fn get_easing_sine(v: f32) -> f32 {
     (v * f32::consts::PI / 2.0).sin()
 }
+
+

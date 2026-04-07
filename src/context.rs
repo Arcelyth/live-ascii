@@ -14,11 +14,21 @@ use ratatui::style::{Color as RatatuiColor, Style};
 
 use crate::model_setting::ModelSetting;
 
-pub enum Panel {
+pub enum OpPanel {
     None,
     Motions,
 }
 
+pub enum DebugPanel {
+    None,
+    Parameters,
+}
+
+pub enum Panel {
+    None, 
+    Op, 
+    Debug,
+}
 pub struct Context {
     pub width: u16,
     pub height: u16,
@@ -26,9 +36,14 @@ pub struct Context {
     pub frame_buffer: Vec<(char, (u8, u8, u8))>,
     pub image: bool,
     pub base_dir: Arc<str>,
-    pub show_motions: bool,
     pub model_setting: ModelSetting,
+    // motion panel
     pub motion_list_state: ListState,
+    // parameter debug panel
+    pub param_list_state: ListState,
+
+    pub current_op_panel: OpPanel,
+    pub current_debug_panel: DebugPanel,
     pub current_panel: Panel,
 }
 
@@ -40,9 +55,11 @@ impl Context {
             frame_buffer: vec![],
             image,
             base_dir: base_dir.into(), 
-            show_motions: false,
             model_setting,
-            motion_list_state: ListState::default().with_selected(Some(1)),
+            motion_list_state: ListState::default().with_selected(Some(0)),
+            param_list_state: ListState::default().with_selected(Some(0)),
+            current_op_panel: OpPanel::None,
+            current_debug_panel: DebugPanel::None,
             current_panel: Panel::None,
         }
     }

@@ -91,8 +91,7 @@ impl Renderer {
         model_setting: &mut ModelSetting,
         exp: Option<ExpMotion>,
         em: &mut ExpressionManager,
-        idle_motion: CubismMotion,
-        pose: &mut Pose,
+        pose: &mut Option<Pose>,
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
@@ -108,11 +107,14 @@ impl Renderer {
         // get eye_blink
         let mut eye_blink = EyeBlink::new(model_setting);
 
-        mm.start_motion_priority(idle_motion, true, 0);
+        //        mm.start_motion_priority(idle_motion, true, 0);
         if let Some(exp) = exp {
             em.qm.start_motion(exp, false);
         }
-        pose.reset(&mut self.model);
+
+        if let Some(pose) = pose {
+            pose.reset(&mut self.model);
+        }
 
         let mut mask_buffer = vec![false; (context.width as usize) * (context.height as usize)];
 
@@ -131,36 +133,71 @@ impl Renderer {
                             KeyCode::Char('=') | KeyCode::Char('+') => self.scale *= 1.1,
                             KeyCode::Char('-') => self.scale *= 0.9,
                             KeyCode::Char('m') => {
-                                context.show_motions = true;
-                                if context.show_motions {
-                                    context.current_panel = Panel::Motions;
-                                }
+                                context.current_panel = Panel::Op;
+                                context.current_op_panel = OpPanel::Motions;
+                            }
+                            KeyCode::Char('p') => {
+                                context.current_panel = Panel::Debug;
+                                context.current_debug_panel = DebugPanel::Parameters;
                             }
                             _ => {}
                         },
-                        Panel::Motions => match code {
-                            KeyCode::Char('q') => {
-                                context.current_panel = Panel::None;
-                                context.show_motions = false;
-                            }
-                            KeyCode::Up => context.motion_list_state.select_previous(),
-                            KeyCode::Down => context.motion_list_state.select_next(),
-                            KeyCode::Enter => {
-                                if let Some(idx) = context.motion_list_state.selected() {
-                                    let file = model_setting.get_all_motion_names()[idx];
-                                    let motion_data =
-                                        MotionData::from_path(&context.base_dir, file)?;
-                                    let motion = CubismMotion::new(motion_data);
-                                    mm.start_motion_priority(motion, true, 2);
+                        Panel::Op => match context.current_op_panel {
+                            OpPanel::Motions => match code {
+                                KeyCode::Char('q') | KeyCode::Esc => {
+                                    context.current_panel = Panel::None;
                                 }
-                            }
-                            KeyCode::Char('m') => {
-                                context.show_motions = !context.show_motions;
-                                if context.show_motions {
-                                    context.current_panel = Panel::Motions;
+                                KeyCode::Up => context.motion_list_state.select_previous(),
+                                KeyCode::Down => context.motion_list_state.select_next(),
+                                KeyCode::Enter => {
+                                    if let Some(idx) = context.motion_list_state.selected() {
+                                        let file = model_setting.get_all_motion_names()[idx];
+                                        let motion_data =
+                                            MotionData::from_path(&context.base_dir, file)?;
+                                        let motion = CubismMotion::new(motion_data);
+                                        mm.start_motion_priority(motion, true, 2);
+                                    }
                                 }
-                            }
-                            _ => {}
+                                KeyCode::Char('m') => {
+                                    context.current_panel = Panel::Op;
+                                    context.current_op_panel = OpPanel::Motions;
+                                }
+                                KeyCode::Char('p') => {
+                                    context.current_panel = Panel::Debug;
+                                    context.current_debug_panel = DebugPanel::Parameters;
+                                }
+                                _ => {}
+                            },
+                            OpPanel::None => {}
+                        },
+                        Panel::Debug => match context.current_debug_panel {
+                            DebugPanel::Parameters => match code {
+                                KeyCode::Char('q') | KeyCode::Esc => {
+                                    context.current_panel = Panel::None;
+                                }
+                                KeyCode::Up => context.param_list_state.select_previous(),
+                                KeyCode::Down => context.param_list_state.select_next(),
+                                KeyCode::Enter => {
+                                    if let Some(idx) = context.param_list_state.selected() {
+                                        let file = model_setting.get_all_motion_names()[idx];
+                                        let motion_data =
+                                            MotionData::from_path(&context.base_dir, file)?;
+                                        let motion = CubismMotion::new(motion_data);
+                                        mm.start_motion_priority(motion, true, 2);
+                                    }
+                                }
+                                KeyCode::Char('m') => {
+                                    context.current_panel = Panel::Op;
+                                    context.current_op_panel = OpPanel::Motions;
+                                }
+
+                                KeyCode::Char('p') => {
+                                    context.current_panel = Panel::Debug;
+                                    context.current_debug_panel = DebugPanel::Parameters;
+                                }
+                                _ => {}
+                            },
+                            DebugPanel::None => {}
                         },
                     }
                 }
@@ -180,7 +217,10 @@ impl Renderer {
             mm.update_motion(&mut self.model, delta_time);
             em.update_motion(&mut self.model, delta_time);
             eye_blink.update_parameters(&mut self.model, delta_time);
-            pose.update_parameters(&mut self.model, delta_time);
+
+            if let Some(pose) = pose {
+                pose.update_parameters(&mut self.model, delta_time);
+            }
 
             // applying manioulation to Drawable
             unsafe {
@@ -398,7 +438,7 @@ impl Renderer {
             //            stdout().flush()?;
 
             // draw ui
-            terminal.draw(|f| match ui(f, context) {
+            terminal.draw(|f| match ui(f, context, &self.model) {
                 Ok(_) => {}
                 Err(e) => {
                     println!("{:?}", e);

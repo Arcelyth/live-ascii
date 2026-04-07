@@ -29,7 +29,7 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let chars_10 = vec![' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
-  
+
     let args = Args::parse();
     let mut model_setting = ModelSetting::new(&args.model_setting)?;
     let model3_path = Path::new(&args.model_setting).canonicalize()?;
@@ -81,18 +81,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     // initialize terminal
     let mut context = Context::new(false, model_setting.clone(), base_dir.to_str().unwrap());
 
-    // initialize motionplayer
-    // TODO: handle more motions
-    let motions = &file_refs.motions;
-    let idle_motions = motions.get("Idle");
-
-    let mut mp = if let Some(m) = idle_motions {
-        let full_motion_path = base_dir.join(&m[0].file);
-        Some(MotionPlayer::new(full_motion_path.to_str().unwrap())?)
-    } else {
-        None
-    };
-
     // initialize motion manager
     let mut mm = MotionManager::new();
 
@@ -102,19 +90,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     // initialize expression
     let exp_file = model_setting.get_expression_file_name(2);
     let mut em = ExpressionManager::new();
-    let mut exp = if let Some(ef) = exp_file {
+    let exp = if let Some(ef) = exp_file {
         Some(ExpMotion::from_path(base_dir.to_str().unwrap(), ef)?)
     } else {
         None
     };
 
-    let motion_file = model_setting.get_motion_file_name("Idle", 0).unwrap();
-    let motion_data = MotionData::from_path(base_dir.to_str().unwrap(), motion_file)?;
-
-    let mut idle_motion = CubismMotion::new(motion_data);
-
-    let pose_file = model_setting.get_pose_file_name().unwrap();
-    let mut pose = Pose::from_path(base_dir.to_str().unwrap(), pose_file.to_str().unwrap())?;
+    let mut pos = if let Some(pose_file) = model_setting.get_pose_file_name() {
+        Some(Pose::from_path(
+            base_dir.to_str().unwrap(),
+            pose_file.to_str().unwrap(),
+        )?)
+    } else {
+        None
+    };
 
     renderer.render(
         &mut context,
@@ -122,8 +111,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &mut model_setting,
         exp,
         &mut em,
-        idle_motion,
-        &mut pose,
+        &mut pos,
     )?;
 
     Ok(())
