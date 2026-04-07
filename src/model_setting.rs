@@ -339,8 +339,8 @@ mod tests {
                         vec![MotionRef {
                             file: "tap_body.motion3.json".into(),
                             sound: None,
-                            fade_in_time: 1.0,
-                            fade_out_time: 1.0,
+                            fade_in_time: -1.0,
+                            fade_out_time: -1.0,
                         }],
                     );
                     map

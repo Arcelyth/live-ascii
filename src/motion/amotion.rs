@@ -248,10 +248,8 @@ impl CubismMotion {
                     model.set_parameter_value(parameter_index, final_value, 1.);
                 }
                 CurveTargetType::PartOpacity => {
-                    let parameter_index = model.get_parameter_index(&curve.id);
-                    if let Some(idx) = parameter_index {
-                        model.set_parameter_value(idx, value, 1.);
-                    }
+                    let part_index = model.get_part_index(&curve.id);
+                    model.set_part_opacity(part_index, value);
                 }
             }
         }

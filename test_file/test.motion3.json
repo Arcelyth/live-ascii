@@ -1,12 +1,12 @@
 {
   "Version": 3,
   "Meta": {
-    "Duration": 4.0,
-    "Fps": 30,
+    "Duration": 2.0,
+    "Fps": 30.0,
     "Loop": true,
-    "CurveCount": 4,
-    "TotalSegmentCount": 20,
-    "TotalPointCount": 24,
+    "CurveCount": 2,
+    "TotalSegmentCount": 4,
+    "TotalPointCount": 7,
     "UserDataCount": 0,
     "TotalUserDataSize": 0
   },
@@ -14,56 +14,12 @@
     {
       "Target": "Parameter",
       "Id": "PARAM_ANGLE_X",
-      "Segments": [
-        0, 0,
-        0, 1.0, 30,
-        0, 2.0, -30,
-        0, 3.0, 30,
-        0, 4.0, 0
-      ]
+      "Segments": [0, 0, 0, 1.0, 30, 0, 2.0, 0]
     },
     {
       "Target": "Parameter",
-      "Id": "PARAM_EYE_L_OPEN",
-      "Segments": [
-        0, 1,
-        0, 0.5, 1,
-        0, 0.6, 0,
-        0, 1.5, 1,
-        0, 2.0, 0,
-        0, 2.1, 1,
-        0, 3.0, 1,
-        0, 3.2, 0,
-        0, 3.3, 1,
-        0, 4.0, 1
-      ]
-    },
-    {
-      "Target": "Parameter",
-      "Id": "PARAM_EYE_R_OPEN",
-      "Segments": [
-        0, 1,
-        0, 0.5, 1,
-        0, 0.6, 0,
-        0, 1.5, 1,
-        0, 2.0, 0,
-        0, 2.1, 1,
-        0, 3.0, 1,
-        0, 3.2, 0,
-        0, 3.3, 1,
-        0, 4.0, 1
-      ]
-    },
-    {
-      "Target": "Parameter",
-      "Id": "PARAM_MOUTH_OPEN_Y",
-      "Segments": [
-        0, 0,
-        0, 1.0, 1,
-        0, 2.0, 0,
-        0, 3.0, 1,
-        0, 4.0, 0
-      ]
+      "Id": "ParamArmRA",
+      "Segments": [0, 0, 1, 0.3, 0, 0.7, 10, 1.0, 10, 0, 2.0, 0]
     }
   ]
 }

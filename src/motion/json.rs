@@ -1,7 +1,7 @@
-use std::fmt;
-use std::path::Path;
-use std::fs;
 use std::error::Error;
+use std::fmt;
+use std::fs;
+use std::path::Path;
 
 use serde::de::{self, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -39,7 +39,7 @@ pub struct Curve {
     pub segments: Segments,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct MotionEvent {
     pub time: f32,
@@ -168,7 +168,7 @@ impl<'de> Deserialize<'de> for Segments {
                             let v: f32 = seq
                                 .next_element()?
                                 .ok_or_else(|| de::Error::custom("Missing inv-stepped value"))?;
-                           let p = SegmentPoint { time: t, value: v };
+                            let p = SegmentPoint { time: t, value: v };
                             result.push(SegmentType::InverseStepped(last_point, p));
                             last_point = p;
                         }
@@ -189,7 +189,7 @@ pub enum CurveTargetType {
     Model,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MotionCurve {
     pub target_type: CurveTargetType,
     pub id: String,
@@ -207,13 +207,13 @@ pub enum MotionSegmentType {
     InverseStepped,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MotionSegment {
     pub base_point_index: usize,
     pub segment_type: MotionSegmentType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MotionData {
     pub duration: f32,
     pub loop_: bool,
@@ -319,4 +319,97 @@ impl MotionData {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn test_motion3_full_structure_comparison() {
+        let result = MotionData::from_path("./test_file", "test.motion3.json")
+            .expect("Failed to parse test.motion3.json");
+
+        let expected = MotionData {
+            duration: 2.0,
+            loop_: true,
+            fps: 30.0,
+            curves: vec![
+                MotionCurve {
+                    target_type: CurveTargetType::Parameter,
+                    id: "PARAM_ANGLE_X".into(),
+                    segment_count: 2,
+                    base_segment_index: 0,
+                    fade_in_time: -1.0,
+                    fade_out_time: -1.0,
+                },
+                MotionCurve {
+                    target_type: CurveTargetType::Parameter,
+                    id: "ParamArmRA".into(),
+                    segment_count: 2,
+                    base_segment_index: 2,
+                    fade_in_time: -1.0,
+                    fade_out_time: -1.0,
+                },
+            ],
+            segments: vec![
+                MotionSegment {
+                    base_point_index: 0,
+                    segment_type: MotionSegmentType::Linear,
+                },
+                MotionSegment {
+                    base_point_index: 2,
+                    segment_type: MotionSegmentType::Linear,
+                },
+                MotionSegment {
+                    base_point_index: 3,
+                    segment_type: MotionSegmentType::Bezier,
+                },
+                MotionSegment {
+                    base_point_index: 7,
+                    segment_type: MotionSegmentType::Linear,
+                },
+            ],
+            points: vec![
+                // PARAM_ANGLE_X
+                SegmentPoint {
+                    time: 0.0,
+                    value: 0.0,
+                }, // 0
+                SegmentPoint {
+                    time: 1.0,
+                    value: 30.0,
+                }, // 1
+                SegmentPoint {
+                    time: 2.0,
+                    value: 0.0,
+                }, // 2
+                // ParamArmRA
+                SegmentPoint {
+                    time: 0.0,
+                    value: 0.0,
+                }, // 3
+                SegmentPoint {
+                    time: 0.3,
+                    value: 0.0,
+                }, // 4
+                SegmentPoint {
+                    time: 0.7,
+                    value: 10.0,
+                }, // 5
+                SegmentPoint {
+                    time: 1.0,
+                    value: 10.0,
+                }, // 6
+                SegmentPoint {
+                    time: 2.0,
+                    value: 0.0,
+                }, // 7
+            ],
+            events: vec![],
+        };
+
+        assert_eq!(
+            result, expected,
+            "The parsed MotionData does not match the expected structure."
+        );
+    }
+}

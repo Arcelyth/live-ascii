@@ -14,7 +14,7 @@ pub fn sort_path(files: &mut Vec<PathBuf>) {
 }
 
 pub fn default_fade_time() -> f32 {
-    1.0
+    -1.0
 }
 
 #[cfg(test)]
