@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use crossterm::{
     cursor,
-    event::{self, Event, KeyCode, KeyEvent},
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     execute,
     terminal::{self},
 };
@@ -20,6 +20,7 @@ use crate::effect::eye_blink::*;
 use crate::effect::pose::*;
 use crate::expression::exp::*;
 use crate::expression::manager::*;
+use crate::utils::*;
 use crate::ffi::*;
 use crate::geometry::*;
 use crate::model::*;
@@ -119,7 +120,23 @@ impl Renderer {
             let frame_start = Instant::now();
 
             if event::poll(Duration::from_millis(1))? {
-                if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+                if let Event::Key(key_event @ KeyEvent { code, .. }) = event::read()? {
+                
+                    let key_str = key_code_to_str(code);
+                    match key_event.kind {
+                        KeyEventKind::Press => {
+                            context.pressed_keys.insert(key_str);
+                        }
+                        KeyEventKind::Release => {
+                            context.pressed_keys.remove(&key_str);
+                        }
+                        _ => {}
+                    }
+
+                    if let Some(live) = &context.live_setting {
+                        live.handle_hotkeys(&context.pressed_keys);   
+                    }
+
                     match context.current_panel {
                         Panel::None => match code {
                             KeyCode::Char('q') => break,

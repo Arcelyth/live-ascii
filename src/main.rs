@@ -11,6 +11,7 @@ use live_ascii::expression::exp::*;
 use live_ascii::expression::manager::*;
 use live_ascii::ffi::*;
 use live_ascii::model::*;
+use live_ascii::live::json::*;
 use live_ascii::model_setting::ModelSetting;
 use live_ascii::motion::amotion::*;
 use live_ascii::motion::json::*;
@@ -30,16 +31,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     let chars_10 = vec![' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
 
     let args = Args::parse();
+    // load model setting
     let mut model_setting = ModelSetting::new(&args.model_setting)?;
     let model3_path = Path::new(&args.model_setting).canonicalize()?;
     let base_dir = model3_path.parent().unwrap();
 
     let file_refs = &model_setting.file_references;
 
+    // get model name
+    let mut name = "";
+
     let mut moc_data = Vec::new();
     if let Some(moc_relative_path) = &file_refs.moc {
         let full_moc_path = base_dir.join(moc_relative_path);
         let mut file = File::open(&full_moc_path)?;
+        name = get_file_name(moc_relative_path.to_str().unwrap());
         file.read_to_end(&mut moc_data)?;
     } else {
         panic!("MOC path not found in JSON");
@@ -77,8 +83,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    // load live json
+    let live = Live::from_path(base_dir.to_str().unwrap(), &format!("{}.live.json", name))?;
+
     // initialize terminal
     let mut context = Context::new(false, model_setting.clone(), base_dir.to_str().unwrap());
+    
+    if name != "" {
+        context.set_live_setting(live);
+    }
 
     // initialize motion manager
     let mut mm = MotionManager::new();
@@ -88,11 +101,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // initialize expression
     let mut em = ExpressionManager::new();
-//    let exp = if let Some(ef) = exp_file {
-//        Some(ExpMotion::from_path(base_dir.to_str().unwrap(), ef)?)
-//    } else {
-//        None
-//    };
+    //    let exp = if let Some(ef) = exp_file {
+    //        Some(ExpMotion::from_path(base_dir.to_str().unwrap(), ef)?)
+    //    } else {
+    //        None
+    //    };
 
     let mut pos = if let Some(pose_file) = model_setting.get_pose_file_name() {
         Some(Pose::from_path(
@@ -103,13 +116,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         None
     };
 
-    renderer.render(
-        &mut context,
-        &mut mm,
-        &mut model_setting,
-        &mut em,
-        &mut pos,
-    )?;
+    renderer.render(&mut context, &mut mm, &mut model_setting, &mut em, &mut pos)?;
 
     Ok(())
 }

@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::path::Path;
+use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
@@ -33,13 +34,38 @@ pub struct HotkeyTriggers {
 pub struct Hotkey {
     pub action: HotkeyAction,
     pub file: String,
-    pub triggers: HotkeyTriggers, 
+    pub triggers: HotkeyTriggers,
     #[serde(default = "default_fade_seconds")]
     pub fade_seconds: f32,
     #[serde(default = "default_after_seconds")]
     pub stop_after_seconds: f32,
     #[serde(default)]
     pub stop_when_release_key: bool,
+}
+
+impl Hotkey {
+    pub fn is_trigger(&self, pressed_keys: &HashSet<String>) -> bool {
+        let mut required = Vec::with_capacity(3);
+        if !self.triggers.trigger1.is_empty() {
+            required.push(&self.triggers.trigger1);
+        }
+        if !self.triggers.trigger2.is_empty() {
+            required.push(&self.triggers.trigger2);
+        }
+        if !self.triggers.trigger3.is_empty() {
+            required.push(&self.triggers.trigger3);
+        }
+
+        if required.is_empty() {
+            return false;
+        }
+
+        required.iter().all(|&req| pressed_keys.contains(req))
+    }
+
+    pub fn apply(&self) {
+
+    } 
 }
 
 fn default_after_seconds() -> f32 {
@@ -49,7 +75,6 @@ fn default_after_seconds() -> f32 {
 fn default_fade_seconds() -> f32 {
     0.5
 }
-
 
 impl Live {
     pub fn from_path(base_dir: &str, path: &str) -> Result<Self, Box<dyn Error>> {
@@ -62,6 +87,14 @@ impl Live {
 
         Ok(live)
     }
+
+    pub fn handle_hotkeys(&self, pressed_keys: &HashSet<String>) {
+        for hotkey in self.hotkeys.iter() {
+            if hotkey.is_trigger(&pressed_keys) {
+                hotkey.apply();
+            }
+        }
+    } 
 }
 
 #[cfg(test)]

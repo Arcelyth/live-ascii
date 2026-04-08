@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::io::stdout;
 use std::sync::Arc;
+use std::collections::HashSet;
 
 use ratatui::widgets::ListState;
 
@@ -13,6 +14,7 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::style::{Color as RatatuiColor, Style};
 
 use crate::model_setting::ModelSetting;
+use crate::live::json::*;
 
 pub enum OpPanel {
     None,
@@ -46,6 +48,8 @@ pub struct Context {
     pub current_op_panel: OpPanel,
     pub current_debug_panel: DebugPanel,
     pub current_panel: Panel,
+    pub pressed_keys: HashSet<String>,
+    pub live_setting: Option<Live>,
 }
 
 impl Context {
@@ -62,7 +66,13 @@ impl Context {
             current_op_panel: OpPanel::None,
             current_debug_panel: DebugPanel::None,
             current_panel: Panel::None,
+            pressed_keys: HashSet::new(),
+            live_setting: None,
         }
+    }
+
+    pub fn set_live_setting(&mut self, live: Live) {
+        self.live_setting = Some(live);
     }
 
     pub fn set_pixel(&mut self, x: u16, y: u16, ch: char, color: (u8, u8, u8)) {
