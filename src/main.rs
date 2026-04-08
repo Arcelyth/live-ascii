@@ -9,6 +9,7 @@ use live_ascii::context::*;
 use live_ascii::effect::pose::*;
 use live_ascii::expression::manager::*;
 use live_ascii::ffi::*;
+use live_ascii::tracker::*;
 use live_ascii::live::json::*;
 use live_ascii::model_setting::ModelSetting;
 use live_ascii::motion::manager::*;
@@ -21,6 +22,8 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 struct Args {
     model_setting: String, // model3.json file
+    #[arg(short, long)]
+    camera: bool,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -80,7 +83,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // initialize terminal
-    let mut context = Context::new(false, model_setting.clone(), base_dir.to_str().unwrap());
+    let mut context = Context::new(false, model_setting.clone(), base_dir.to_str().unwrap(), args.camera);
 
     // load live json
     let live = Live::from_path(base_dir.to_str().unwrap(), &format!("{}.live.json", name));
@@ -96,11 +99,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // initialize expression
     let mut em = ExpressionManager::new();
-    //    let exp = if let Some(ef) = exp_file {
-    //        Some(ExpMotion::from_path(base_dir.to_str().unwrap(), ef)?)
-    //    } else {
-    //        None
-    //    };
+
+    // initalize tracker 
+    let mut tracker = Tracker::new();
 
     let mut pos = if let Some(pose_file) = model_setting.get_pose_file_name() {
         Some(Pose::from_path(
@@ -111,7 +112,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         None
     };
 
-    renderer.render(&mut context, &mut mm, &mut model_setting, &mut em, &mut pos)?;
+    renderer.render(&mut context, &mut mm, &mut model_setting, &mut em, &mut pos, &mut tracker)?;
 
     Ok(())
 }

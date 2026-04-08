@@ -16,7 +16,7 @@ use image::{DynamicImage, GenericImageView};
 use ratatui::{Terminal, backend::CrosstermBackend, widgets::Paragraph};
 
 use crate::context::*;
-use crate::effect::eye_blink::*;
+use crate::controller::*;
 use crate::effect::pose::*;
 use crate::expression::exp::*;
 use crate::expression::manager::*;
@@ -28,6 +28,7 @@ use crate::model_setting::ModelSetting;
 use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
+use crate::tracker::*;
 use crate::ui::*;
 use crate::utils::*;
 
@@ -92,6 +93,7 @@ impl Renderer {
         model_setting: &mut ModelSetting,
         em: &mut ExpressionManager,
         pose: &mut Option<Pose>,
+        tracker: &mut Tracker,
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
@@ -109,6 +111,12 @@ impl Renderer {
         }
 
         let mut mask_buffer = vec![false; (context.width as usize) * (context.height as usize)];
+
+        let mut face_controller = FaceController::new(0.3);
+
+        if context.camera {
+            tracker.run()?;
+        }
 
         loop {
             let frame_start = Instant::now();
@@ -276,6 +284,15 @@ impl Renderer {
 
             mm.update_motion(&mut self.model, delta_time);
 
+            // tracking
+            if context.camera {
+                if let Some(packet) = tracker.latest() {
+                    if packet.success == 1 {
+                        face_controller.update_parameters(&mut self.model, &packet);
+                    }
+                }
+            }
+
             self.model.save_parameters();
 
             em.update_motion(&mut self.model, delta_time);
@@ -283,7 +300,6 @@ impl Renderer {
             if let Some(pose) = pose {
                 pose.update_parameters(&mut self.model, delta_time);
             }
-
 
             // applying manioulation to Drawable
             unsafe {

@@ -165,3 +165,4 @@ impl Tracker {
         self.latest.lock().ok().and_then(|g| g.clone())
     }
 }
+

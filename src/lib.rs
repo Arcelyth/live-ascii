@@ -11,3 +11,4 @@ pub mod effect;
 pub mod tracker;
 pub mod ui;
 pub mod live;
+pub mod controller;

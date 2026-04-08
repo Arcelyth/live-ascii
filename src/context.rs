@@ -57,10 +57,12 @@ pub struct Context {
     pub live_setting: Option<Live>,
     pub action_queue: Vec<Action>,
     pub active_expressions: std::collections::HashMap<String, usize>,
+
+    pub camera: bool,
 }
 
 impl Context {
-    pub fn new(image: bool, model_setting: ModelSetting, base_dir: &str) -> Self {
+    pub fn new(image: bool, model_setting: ModelSetting, base_dir: &str, camera: bool) -> Self {
         Self {
             width: 0,
             height: 0,
@@ -78,6 +80,7 @@ impl Context {
             live_setting: None,
             action_queue: vec![],
             active_expressions: HashMap::new(),
+            camera,
         }
     }
 
