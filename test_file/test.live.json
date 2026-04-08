@@ -1,0 +1,18 @@
+{
+  "Version": 1,
+  "Name": "test",
+  "Hotkeys": [
+    {
+      "Action": "Set/UnSet Expression",
+      "File": "exp_02.exp3.json",
+      "Triggers": {
+        "Trigger1": "A",
+        "Trigger2": "",
+        "Trigger3": ""
+      },
+      "FadeSeconds": 0.5,
+      "StopAfterSeconds": 3,
+      "StopWhenReleaseKey": false
+    }
+  ]
+}
