@@ -3,11 +3,9 @@ use std::fs;
 use std::path::Path;
 
 use crate::expression::json::*;
-use crate::ffi::*;
 use crate::model::Model;
 use crate::motion::amotion::*;
 use crate::motion::queue::*;
-use crate::renderer::*;
 
 pub enum ExpBlendType {
     Add,
@@ -190,9 +188,9 @@ impl ACubismMotion for ExpMotion {
 
     fn update_parameters(
         &mut self,
-        model: &mut Model,
-        qe: &mut MotionQueueEntry,
-        user_time_s: f32,
+        _model: &mut Model,
+        _qe: &mut MotionQueueEntry,
+        _user_time_s: f32,
     ) {
     }
 
@@ -244,8 +242,8 @@ impl ACubismMotion for ExpMotion {
 
     fn get_fired_events(
         &mut self,
-        before_check_time_seconds: f32,
-        motion_time_seconds: f32,
+        _before_check_time_seconds: f32,
+        _motion_time_seconds: f32,
     ) -> Vec<String> {
         vec![]
     }

@@ -23,7 +23,7 @@ impl MotionManager {
             self.reserve_prior = 0;
         }
         self.current_prior = priority;
-        self.qm.start_motion(motion, auto_delete)
+        self.qm.start_motion(motion, auto_delete);
     }
 
     pub fn update_motion(&mut self, model: &mut Model, delta_time_s: f32) -> bool {

@@ -1,8 +1,8 @@
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::path::Path;
-use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +19,10 @@ pub struct Live {
 pub enum HotkeyAction {
     #[serde(rename = "Set/UnSet Expression")]
     SetUnsetExpression,
+}
+
+pub enum Action {
+    SetUnsetExpression(String),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -63,9 +67,13 @@ impl Hotkey {
         required.iter().all(|&req| pressed_keys.contains(req))
     }
 
-    pub fn apply(&self) {
-
-    } 
+    pub fn apply(&self, action_queue: &mut Vec<Action>) {
+        match self.action {
+            HotkeyAction::SetUnsetExpression => {
+                action_queue.push(Action::SetUnsetExpression(self.file.clone()));
+            }
+        }
+    }
 }
 
 fn default_after_seconds() -> f32 {
@@ -88,13 +96,36 @@ impl Live {
         Ok(live)
     }
 
-    pub fn handle_hotkeys(&self, pressed_keys: &HashSet<String>) {
+    pub fn handle_hotkeys(
+        &self,
+        pressed_keys: &HashSet<String>,
+        last_pressed_keys: &HashSet<String>,
+        action: &mut Vec<Action>,
+    ) {
         for hotkey in self.hotkeys.iter() {
-            if hotkey.is_trigger(&pressed_keys) {
-                hotkey.apply();
+            if hotkey.is_trigger(pressed_keys) {
+                let is_new_press = if !hotkey.triggers.trigger1.is_empty()
+                    && !last_pressed_keys.contains(&hotkey.triggers.trigger1)
+                {
+                    true
+                } else if !hotkey.triggers.trigger2.is_empty()
+                    && !last_pressed_keys.contains(&hotkey.triggers.trigger2)
+                {
+                    true
+                } else if !hotkey.triggers.trigger3.is_empty()
+                    && !last_pressed_keys.contains(&hotkey.triggers.trigger3)
+                {
+                    true
+                } else {
+                    false
+                };
+
+                if is_new_press {
+                    hotkey.apply(action);
+                }
             }
         }
-    } 
+    }
 }
 
 #[cfg(test)]

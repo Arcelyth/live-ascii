@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-
 use crate::expression::exp::*;
 use crate::model::Model;
 use crate::motion::amotion::*;

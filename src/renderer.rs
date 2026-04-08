@@ -20,15 +20,16 @@ use crate::effect::eye_blink::*;
 use crate::effect::pose::*;
 use crate::expression::exp::*;
 use crate::expression::manager::*;
-use crate::utils::*;
 use crate::ffi::*;
 use crate::geometry::*;
+use crate::live::json::*;
 use crate::model::*;
 use crate::model_setting::ModelSetting;
 use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
 use crate::ui::*;
+use crate::utils::*;
 
 pub struct Renderer {
     pub count: usize,
@@ -104,12 +105,8 @@ impl Renderer {
         let mut last_frame = Instant::now();
 
         // get eye_blink
-        let mut eye_blink = EyeBlink::new(model_setting);
+        //        let mut eye_blink = EyeBlink::new(model_setting);
 
-        //        if let Some(exp) = exp {
-        //            em.qm.start_motion(exp, false);
-        //        }
-        //
         if let Some(pose) = pose {
             pose.reset(&mut self.model);
         }
@@ -121,7 +118,6 @@ impl Renderer {
 
             if event::poll(Duration::from_millis(1))? {
                 if let Event::Key(key_event @ KeyEvent { code, .. }) = event::read()? {
-                
                     let key_str = key_code_to_str(code);
                     match key_event.kind {
                         KeyEventKind::Press => {
@@ -131,10 +127,6 @@ impl Renderer {
                             context.pressed_keys.remove(&key_str);
                         }
                         _ => {}
-                    }
-
-                    if let Some(live) = &context.live_setting {
-                        live.handle_hotkeys(&context.pressed_keys);   
                     }
 
                     match context.current_panel {
@@ -218,6 +210,51 @@ impl Renderer {
                     }
                 }
             }
+
+            if let Some(live) = &context.live_setting {
+                live.handle_hotkeys(
+                    &context.pressed_keys,
+                    &context.last_pressed_keys,
+                    &mut context.action_queue,
+                );
+            }
+
+            context.last_pressed_keys = context.pressed_keys.clone();
+
+            for action in &context.action_queue {
+                match action {
+                    Action::SetUnsetExpression(file) => {
+                        let mut need_start = true;
+
+                        if let Some(&saved_id) = context.active_expressions.get(file) {
+                            if !em.qm.is_finished(saved_id) {
+                                if let Some(entry) =
+                                    em.qm.motions.iter_mut().find(|e| e.id == saved_id)
+                                {
+                                    let fade = entry.motion.base().fade_out_seconds;
+                                    let user_time = em.qm.user_time_seconds;
+                                    entry.start_fade_out(fade, user_time);
+                                }
+                                context.active_expressions.remove(file);
+                                need_start = false;
+                            } else {
+                                context.active_expressions.remove(file);
+                            }
+
+                        }
+
+                        if need_start {
+                            if let Ok(exp) = ExpMotion::from_path(&context.base_dir, file) {
+                                let new_id = em.qm.start_motion(exp, false);
+                                context.active_expressions.insert(file.clone(), new_id);
+                            }
+                        }
+                    }
+                }
+            }
+
+            context.action_queue.clear();
+
             context.update()?;
             context.clear();
             let needed = (context.width as usize) * (context.height as usize);
@@ -231,8 +268,8 @@ impl Renderer {
             last_frame = Instant::now();
 
             mm.update_motion(&mut self.model, delta_time);
-            //            em.update_motion(&mut self.model, delta_time);
-            eye_blink.update_parameters(&mut self.model, delta_time);
+            em.update_motion(&mut self.model, delta_time);
+            //            eye_blink.update_parameters(&mut self.model, delta_time);
 
             if let Some(pose) = pose {
                 pose.update_parameters(&mut self.model, delta_time);

@@ -3,6 +3,7 @@ use crate::motion::amotion::*;
 use crate::motion::json::*;
 
 pub struct MotionQueueEntry {
+    pub id: usize,
     pub auto_delete: bool,
     pub motion: Box<dyn ACubismMotion>,
     pub available: bool,
@@ -19,8 +20,9 @@ pub struct MotionQueueEntry {
 }
 
 impl MotionQueueEntry {
-    pub fn new(motion: Box<dyn ACubismMotion>) -> Self {
+    pub fn new(motion: Box<dyn ACubismMotion>, id: usize) -> Self {
         Self {
+            id,
             auto_delete: false,
             motion,
             available: true,
@@ -60,6 +62,7 @@ pub struct MotionQueueManager {
     pub user_time_seconds: f32,
     pub motions: Vec<MotionQueueEntry>,
     pub event_callback: Option<Box<dyn Fn(&str)>>,
+    pub id_counter: usize,
 }
 
 impl MotionQueueManager {
@@ -68,16 +71,23 @@ impl MotionQueueManager {
             user_time_seconds: 0.,
             motions: vec![],
             event_callback: None,
+            id_counter: 0,
         }
     }
 
-    pub fn start_motion<A: ACubismMotion + 'static>(&mut self, motion: A, auto_delete: bool) {
+    pub fn start_motion<A: ACubismMotion + 'static>(
+        &mut self,
+        motion: A,
+        auto_delete: bool,
+    ) -> usize {
         for entry in &mut self.motions {
             entry.set_fade_out(entry.motion.base().fade_out_seconds);
         }
-        let mut m_entry = MotionQueueEntry::new(Box::new(motion));
+        let mut m_entry = MotionQueueEntry::new(Box::new(motion), self.id_counter);
+        self.id_counter += 1;
         m_entry.auto_delete = auto_delete;
         self.motions.push(m_entry);
+        self.id_counter - 1
     }
 
     pub fn do_update_motion(&mut self, model: &mut Model, user_time_s: f32) -> bool {
@@ -110,10 +120,11 @@ impl MotionQueueManager {
             if entry.finished {
                 remove_items.push(i);
             }
-
-            if entry.is_triggered_fade_out {
-                entry.start_fade_out(entry.fade_out_seconds, user_time_s);
-            }
+//            else {
+//                if entry.is_triggered_fade_out {
+//                    entry.start_fade_out(entry.fade_out_seconds, user_time_s);
+//                }
+//            }
         }
 
         for i in remove_items.into_iter().rev() {
@@ -126,12 +137,12 @@ impl MotionQueueManager {
         self.motions.iter().all(|entry| entry.finished)
     }
 
-    pub fn is_finished(&self, handle: usize) -> bool {
-        if let Some(entry) = self.motions.get(handle) {
-            entry.finished
-        } else {
-            true
-        }
+    pub fn is_finished(&self, id: usize) -> bool {
+        self.motions
+            .iter()
+            .find(|e| e.id == id)
+            .map(|e| e.finished)
+            .unwrap_or(true)
     }
 
     pub fn stop_all_motions(&mut self) {

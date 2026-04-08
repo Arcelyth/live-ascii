@@ -2,6 +2,7 @@ use std::error::Error;
 use std::io::stdout;
 use std::sync::Arc;
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 use ratatui::widgets::ListState;
 
@@ -32,6 +33,7 @@ pub enum Panel {
     Op, 
     Debug,
 }
+
 pub struct Context {
     pub width: u16,
     pub height: u16,
@@ -49,7 +51,10 @@ pub struct Context {
     pub current_debug_panel: DebugPanel,
     pub current_panel: Panel,
     pub pressed_keys: HashSet<String>,
+    pub last_pressed_keys: HashSet<String>,
     pub live_setting: Option<Live>,
+    pub action_queue: Vec<Action>,
+    pub active_expressions: std::collections::HashMap<String, usize>,
 }
 
 impl Context {
@@ -67,7 +72,10 @@ impl Context {
             current_debug_panel: DebugPanel::None,
             current_panel: Panel::None,
             pressed_keys: HashSet::new(),
+            last_pressed_keys: HashSet::new(),
             live_setting: None,
+            action_queue: vec![],
+            active_expressions: HashMap::new(),
         }
     }
 
