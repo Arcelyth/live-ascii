@@ -119,12 +119,11 @@ impl MotionQueueManager {
 
             if entry.finished {
                 remove_items.push(i);
+            } else {
+                if entry.is_triggered_fade_out {
+                    entry.start_fade_out(entry.fade_out_seconds, user_time_s);
+                }
             }
-//            else {
-//                if entry.is_triggered_fade_out {
-//                    entry.start_fade_out(entry.fade_out_seconds, user_time_s);
-//                }
-//            }
         }
 
         for i in remove_items.into_iter().rev() {

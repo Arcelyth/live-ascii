@@ -21,6 +21,7 @@ pub enum HotkeyAction {
     SetUnsetExpression,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum Action {
     SetUnsetExpression(String),
 }
@@ -70,7 +71,10 @@ impl Hotkey {
     pub fn apply(&self, action_queue: &mut Vec<Action>) {
         match self.action {
             HotkeyAction::SetUnsetExpression => {
-                action_queue.push(Action::SetUnsetExpression(self.file.clone()));
+                let a = Action::SetUnsetExpression(self.file.clone());
+                if !action_queue.contains(&a) {
+                    action_queue.push(a);
+                }
             }
         }
     }
@@ -100,29 +104,13 @@ impl Live {
         &self,
         pressed_keys: &HashSet<String>,
         last_pressed_keys: &HashSet<String>,
-        action: &mut Vec<Action>,
+        action_queue: &mut Vec<Action>,
     ) {
         for hotkey in self.hotkeys.iter() {
-            if hotkey.is_trigger(pressed_keys) {
-                let is_new_press = if !hotkey.triggers.trigger1.is_empty()
-                    && !last_pressed_keys.contains(&hotkey.triggers.trigger1)
-                {
-                    true
-                } else if !hotkey.triggers.trigger2.is_empty()
-                    && !last_pressed_keys.contains(&hotkey.triggers.trigger2)
-                {
-                    true
-                } else if !hotkey.triggers.trigger3.is_empty()
-                    && !last_pressed_keys.contains(&hotkey.triggers.trigger3)
-                {
-                    true
-                } else {
-                    false
-                };
-
-                if is_new_press {
-                    hotkey.apply(action);
-                }
+            let is_triggered = hotkey.is_trigger(pressed_keys);
+            let was_triggered = hotkey.is_trigger(last_pressed_keys);
+            if is_triggered != was_triggered {
+                hotkey.apply(action_queue);
             }
         }
     }

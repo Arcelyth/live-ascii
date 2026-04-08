@@ -45,7 +45,11 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
                     Block::default()
                         .borders(Borders::ALL)
                         .border_style(Style::default().fg(border_fg))
-                        .style(Style::default().fg(motion_list_border_fg).add_modifier(Modifier::BOLD))
+                        .style(
+                            Style::default()
+                                .fg(motion_list_border_fg)
+                                .add_modifier(Modifier::BOLD),
+                        )
                         .title(" Motion List "),
                 )
                 .highlight_style(
@@ -81,7 +85,11 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
                     Block::default()
                         .borders(Borders::ALL)
                         .border_style(Style::default().fg(border_fg))
-                        .style(Style::default().fg(param_list_border_fg).add_modifier(Modifier::BOLD))
+                        .style(
+                            Style::default()
+                                .fg(param_list_border_fg)
+                                .add_modifier(Modifier::BOLD),
+                        )
                         .title(" Parameters "),
                 )
                 .highlight_style(
@@ -113,8 +121,85 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
                     Block::default()
                         .borders(Borders::ALL)
                         .border_style(Style::default().fg(border_fg))
-                        .style(Style::default().fg(param_list_border_fg).add_modifier(Modifier::BOLD))
+                        .style(
+                            Style::default()
+                                .fg(param_list_border_fg)
+                                .add_modifier(Modifier::BOLD),
+                        )
                         .title(" Part Opacities "),
+                )
+                .highlight_style(
+                    Style::default()
+                        .bg(param_list_border_hl_bg)
+                        .fg(param_list_border_hl_fg),
+                )
+                .highlight_symbol("> ");
+
+            frame.render_widget(Clear, list_area);
+            frame.render_stateful_widget(list_widget, list_area, &mut context.param_list_state);
+        }
+        DebugPanel::AppliedExp => {
+            let list_area = Rect::new(2, 20, 45, 20);
+            let border_fg = if let Panel::Debug = context.current_panel {
+                selected_border
+            } else {
+                param_list_border_fg
+            };
+
+            let items: Vec<ListItem> = context
+                .get_active_expressions()
+                .iter()
+                .map(|m| ListItem::new(format!("{}", m)))
+                .collect();
+
+            let list_widget = List::new(items)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(border_fg))
+                        .style(
+                            Style::default()
+                                .fg(param_list_border_fg)
+                                .add_modifier(Modifier::BOLD),
+                        )
+                        .title(" Applied Expressions "),
+                )
+                .highlight_style(
+                    Style::default()
+                        .bg(param_list_border_hl_bg)
+                        .fg(param_list_border_hl_fg),
+                )
+                .highlight_symbol("> ");
+
+            frame.render_widget(Clear, list_area);
+            frame.render_stateful_widget(list_widget, list_area, &mut context.param_list_state);
+        }
+
+        DebugPanel::PressedKeys => {
+            let list_area = Rect::new(2, 20, 45, 20);
+            let border_fg = if let Panel::Debug = context.current_panel {
+                selected_border
+            } else {
+                param_list_border_fg
+            };
+
+            let items: Vec<ListItem> = context
+                .get_pressed_keys()
+                .iter()
+                .map(|m| ListItem::new(format!("{}", m)))
+                .collect();
+
+            let list_widget = List::new(items)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(border_fg))
+                        .style(
+                            Style::default()
+                                .fg(param_list_border_fg)
+                                .add_modifier(Modifier::BOLD),
+                        )
+                        .title(" Applied Expressions "),
                 )
                 .highlight_style(
                     Style::default()

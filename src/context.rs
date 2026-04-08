@@ -1,8 +1,8 @@
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::error::Error;
 use std::io::stdout;
 use std::sync::Arc;
-use std::collections::HashSet;
-use std::collections::HashMap;
 
 use ratatui::widgets::ListState;
 
@@ -11,11 +11,11 @@ use crossterm::{
     style::{Color, PrintStyledContent, Stylize},
     terminal,
 };
-use ratatui::text::{Line, Span, Text};
 use ratatui::style::{Color as RatatuiColor, Style};
+use ratatui::text::{Line, Span, Text};
 
-use crate::model_setting::ModelSetting;
 use crate::live::json::*;
+use crate::model_setting::ModelSetting;
 
 pub enum OpPanel {
     None,
@@ -26,11 +26,13 @@ pub enum DebugPanel {
     None,
     Parameters,
     PartOpacities,
+    AppliedExp,
+    PressedKeys,
 }
 
 pub enum Panel {
-    None, 
-    Op, 
+    None,
+    Op,
     Debug,
 }
 
@@ -64,7 +66,7 @@ impl Context {
             height: 0,
             frame_buffer: vec![],
             image,
-            base_dir: base_dir.into(), 
+            base_dir: base_dir.into(),
             model_setting,
             motion_list_state: ListState::default().with_selected(Some(0)),
             param_list_state: ListState::default().with_selected(Some(0)),
@@ -156,5 +158,13 @@ impl Context {
             lines.push(Line::from(spans));
         }
         Text::from(lines)
+    }
+
+    pub fn get_active_expressions(&self) -> Vec<&str> {
+        self.active_expressions.keys().map(|s| s.as_str()).collect()
+    }
+
+    pub fn get_pressed_keys(&self) -> Vec<&str> {
+        self.pressed_keys.iter().map(|s| s.as_str()).collect()
     }
 }

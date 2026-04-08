@@ -7,14 +7,10 @@ use std::ptr;
 
 use live_ascii::context::*;
 use live_ascii::effect::pose::*;
-use live_ascii::expression::exp::*;
 use live_ascii::expression::manager::*;
 use live_ascii::ffi::*;
-use live_ascii::model::*;
 use live_ascii::live::json::*;
 use live_ascii::model_setting::ModelSetting;
-use live_ascii::motion::amotion::*;
-use live_ascii::motion::json::*;
 use live_ascii::motion::manager::*;
 
 use live_ascii::renderer::*;
@@ -83,13 +79,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // load live json
-    let live = Live::from_path(base_dir.to_str().unwrap(), &format!("{}.live.json", name))?;
-
     // initialize terminal
     let mut context = Context::new(false, model_setting.clone(), base_dir.to_str().unwrap());
-    
-    if name != "" {
+
+    // load live json
+    let live = Live::from_path(base_dir.to_str().unwrap(), &format!("{}.live.json", name));
+    if let Ok(live) = live {
         context.set_live_setting(live);
     }
 

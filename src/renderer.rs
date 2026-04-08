@@ -104,9 +104,6 @@ impl Renderer {
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
         let mut last_frame = Instant::now();
 
-        // get eye_blink
-        //        let mut eye_blink = EyeBlink::new(model_setting);
-
         if let Some(pose) = pose {
             pose.reset(&mut self.model);
         }
@@ -121,7 +118,11 @@ impl Renderer {
                     let key_str = key_code_to_str(code);
                     match key_event.kind {
                         KeyEventKind::Press => {
-                            context.pressed_keys.insert(key_str);
+                            if context.pressed_keys.contains(&key_str) {
+                                context.pressed_keys.remove(&key_str);
+                            } else {
+                                context.pressed_keys.insert(key_str);
+                            }
                         }
                         KeyEventKind::Release => {
                             context.pressed_keys.remove(&key_str);
@@ -186,7 +187,8 @@ impl Renderer {
                             OpPanel::None => {}
                         },
                         Panel::Debug => match context.current_debug_panel {
-                            DebugPanel::Parameters | DebugPanel::PartOpacities => match code {
+                            DebugPanel::None => {}
+                            _ => match code {
                                 KeyCode::Char('q') | KeyCode::Esc => {
                                     context.current_panel = Panel::None;
                                     context.current_debug_panel = DebugPanel::None;
@@ -197,6 +199,13 @@ impl Renderer {
                                 KeyCode::Char('2') => {
                                     context.current_debug_panel = DebugPanel::PartOpacities;
                                 }
+                                KeyCode::Char('3') => {
+                                    context.current_debug_panel = DebugPanel::AppliedExp;
+                                }
+                                KeyCode::Char('4') => {
+                                    context.current_debug_panel = DebugPanel::PressedKeys;
+                                }
+
                                 KeyCode::Up => context.param_list_state.select_previous(),
                                 KeyCode::Down => context.param_list_state.select_next(),
                                 KeyCode::Char('m') => {
@@ -205,7 +214,6 @@ impl Renderer {
                                 }
                                 _ => {}
                             },
-                            DebugPanel::None => {}
                         },
                     }
                 }
@@ -240,7 +248,6 @@ impl Renderer {
                             } else {
                                 context.active_expressions.remove(file);
                             }
-
                         }
 
                         if need_start {
@@ -268,14 +275,15 @@ impl Renderer {
             last_frame = Instant::now();
 
             mm.update_motion(&mut self.model, delta_time);
+
+            self.model.save_parameters();
+
             em.update_motion(&mut self.model, delta_time);
-            //            eye_blink.update_parameters(&mut self.model, delta_time);
 
             if let Some(pose) = pose {
                 pose.update_parameters(&mut self.model, delta_time);
             }
 
-            self.model.save_parameters();
 
             // applying manioulation to Drawable
             unsafe {
