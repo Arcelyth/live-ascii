@@ -52,7 +52,7 @@ impl ExpressionManager {
                                 id: param.id.clone(),
                                 add_value: 0.0,
                                 mul_value: 1.0,
-                                ow_value: model.get_parameter_value_by_id(&param.id).unwrap(),
+                                ow_value: model.get_parameter_value_by_id(&param.id),
                             });
                         }
                     }

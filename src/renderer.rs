@@ -151,16 +151,15 @@ impl Renderer {
                                 KeyCode::Up => context.motion_list_state.select_previous(),
                                 KeyCode::Down => context.motion_list_state.select_next(),
                                 KeyCode::Enter => {
-                                    if let Some(p) = pose {
-                                        p.reset(&mut self.model);
-                                    }
-
                                     if let Some(idx) = context.motion_list_state.selected() {
                                         let file = model_setting.get_all_motion_names()[idx];
                                         let motion_data =
                                             MotionData::from_path(&context.base_dir, file)?;
                                         let motion = CubismMotion::new(motion_data);
-                                        mm.start_motion_priority(motion, true, 2);
+                                        mm.start_motion_priority(motion, true, 0);
+                                    }
+                                    if let Some(p) = pose {
+                                        p.reset(&mut self.model);
                                     }
                                 }
                                 KeyCode::Char('m') => {

@@ -123,7 +123,7 @@ impl ExpMotion {
 
         for ep_val in expression_parameter_values {
             // TODO: Error handle
-            let current_model_val = model.get_parameter_value_by_id(&ep_val.id).unwrap();
+            let current_model_val = model.get_parameter_value_by_id(&ep_val.id);
 
             let target_config = self.params.iter().find(|p| p.id == ep_val.id);
 

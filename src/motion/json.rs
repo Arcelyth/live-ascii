@@ -349,6 +349,22 @@ mod tests {
                     fade_in_time: -1.0,
                     fade_out_time: -1.0,
                 },
+                MotionCurve {
+                    target_type: CurveTargetType::PartOpacity,
+                    id: "PartArmA".into(),
+                    segment_count: 1,
+                    base_segment_index: 4,
+                    fade_in_time: -1.0,
+                    fade_out_time: -1.0,
+                },
+                MotionCurve {
+                    target_type: CurveTargetType::PartOpacity,
+                    id: "PartArmB".into(),
+                    segment_count: 1,
+                    base_segment_index: 5,
+                    fade_in_time: -1.0,
+                    fade_out_time: -1.0,
+                },
             ],
             segments: vec![
                 MotionSegment {
@@ -365,6 +381,14 @@ mod tests {
                 },
                 MotionSegment {
                     base_point_index: 7,
+                    segment_type: MotionSegmentType::Linear,
+                },
+                MotionSegment {
+                    base_point_index: 8,
+                    segment_type: MotionSegmentType::Linear,
+                },
+                MotionSegment {
+                    base_point_index: 10,
                     segment_type: MotionSegmentType::Linear,
                 },
             ],
@@ -403,6 +427,22 @@ mod tests {
                     time: 2.0,
                     value: 0.0,
                 }, // 7
+                SegmentPoint {
+                    time: 0.0,
+                    value: 0.0,
+                }, // 8
+                SegmentPoint {
+                    time: 2.1,
+                    value: 0.0,
+                }, // 9
+                SegmentPoint {
+                    time: 0.0,
+                    value: 0.99,
+                }, // 10
+                SegmentPoint {
+                    time: 2.1,
+                    value: 0.99,
+                }, // 11
             ],
             events: vec![],
         };

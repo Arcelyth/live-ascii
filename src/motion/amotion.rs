@@ -96,7 +96,6 @@ impl CubismMotion {
         }
     }
 
-
     pub fn do_update_parameters(
         &mut self,
         model: &mut Model,
@@ -155,8 +154,8 @@ impl CubismMotion {
             if duration <= 0.0 {
                 duration = 0.001;
             }
-            while time > duration {
-                time -= duration;
+            if duration > 0.0 {
+                time %= duration;
             }
         }
 
@@ -176,12 +175,6 @@ impl CubismMotion {
                 }
                 CurveTargetType::Parameter => {
                     let parameter_index = model.get_parameter_index(&curve.id);
-                    let parameter_index = if let Some(idx) = parameter_index {
-                        idx
-                    } else {
-                        continue;
-                    };
-
                     let source_value = model.get_parameter_value(parameter_index);
                     let mut current_value = value;
 
@@ -212,7 +205,8 @@ impl CubismMotion {
                     }
 
                     if model.is_repeat(parameter_index) {
-                        current_value = model.get_parameter_repeat_value(parameter_index, current_value);
+                        current_value =
+                            model.get_parameter_repeat_value(parameter_index, current_value);
                     }
 
                     let final_value;
@@ -225,14 +219,16 @@ impl CubismMotion {
                             1.0
                         } else {
                             get_easing_sine(
-                                (user_time_seconds - motion_queue_e.fade_in_start_time_seconds) 
+                                (user_time_seconds - motion_queue_e.fade_in_start_time_seconds)
                                     / curve.fade_in_time,
                             )
                         };
 
                         let fout = if curve.fade_out_time < 0.0 {
                             tmp_fade_out
-                        } else if curve.fade_out_time == 0.0 || motion_queue_e.end_time_seconds < 0.0 {
+                        } else if curve.fade_out_time == 0.0
+                            || motion_queue_e.end_time_seconds < 0.0
+                        {
                             1.0
                         } else {
                             get_easing_sine(
@@ -248,8 +244,11 @@ impl CubismMotion {
                     model.set_parameter_value(parameter_index, final_value, 1.);
                 }
                 CurveTargetType::PartOpacity => {
-                    let part_index = model.get_part_index(&curve.id);
-                    model.set_part_opacity(part_index, value);
+                    //                    let part_index = model.get_part_index(&curve.id);
+                    //                    model.set_part_opacity(part_index, value);
+                    let param_index = model.get_parameter_index(&curve.id);
+
+                    model.set_parameter_value(param_index, value, 1.0);
                 }
             }
         }
@@ -264,11 +263,7 @@ impl CubismMotion {
                 if (eye_blink_flags >> i) & 0x01 != 0 {
                     continue;
                 }
-                let source_value = if let Some(v) = model.get_parameter_value_by_id(id) {
-                    v
-                } else {
-                    continue;
-                };
+                let source_value = model.get_parameter_value_by_id(id);
                 let v = source_value + (eye_blink_value - source_value) * fade_weight;
                 model.set_parameter_value_by_id(id, v, 1.);
             }
@@ -284,12 +279,7 @@ impl CubismMotion {
                 if (lip_sync_flags >> i) & 0x01 != 0 {
                     continue;
                 }
-                let source_value = if let Some(v) = model.get_parameter_value_by_id(id) {
-                    v
-                } else {
-                    continue;
-                };
-
+                let source_value = model.get_parameter_value_by_id(id);
                 let v = source_value + (lip_sync_value - source_value) * fade_weight;
                 model.set_parameter_value_by_id(id, v, 1.);
             }
@@ -391,7 +381,6 @@ impl CubismMotion {
         }
         return None;
     }
-
 }
 
 impl ACubismMotion for CubismMotion {

@@ -130,8 +130,23 @@ impl Model {
         }
     }
 
-    pub fn get_parameter_index(&self, id: &str) -> Option<usize> {
-        self.param_id_to_index.get(id).copied()
+    pub fn get_parameter_index(&mut self, id: &str) -> usize {
+        if let Some(&index) = self.param_id_to_index.get(id) {
+            return index;
+        }
+
+        if let Some(&index) = self.not_exist_param_id.get(id) {
+            return index;
+        }
+
+        let virtual_index = self.param_count + self.not_exist_param_id.len();
+
+        self.not_exist_param_id
+            .insert(id.to_string(), virtual_index);
+
+        self.not_exist_param_values.insert(virtual_index, 0.0);
+
+        virtual_index
     }
 
     pub fn get_parameter_value(&self, idx: usize) -> f32 {
@@ -142,12 +157,9 @@ impl Model {
         }
     }
 
-    pub fn get_parameter_value_by_id(&self, idx: &str) -> Option<f32> {
-        if let Some(index) = self.get_parameter_index(idx) {
-            Some(self.get_parameter_value(index))
-        } else {
-            None
-        }
+    pub fn get_parameter_value_by_id(&mut self, idx: &str) -> f32 {
+        let index = self.get_parameter_index(idx);
+        self.get_parameter_value(index)
     }
 
     pub fn set_parameter_value(&mut self, index: usize, value: f32, weight: f32) {
@@ -191,9 +203,8 @@ impl Model {
     }
 
     pub fn set_parameter_value_by_id(&mut self, index: &str, value: f32, weight: f32) {
-        if let Some(index) = self.get_parameter_index(index) {
-            self.set_parameter_value(index, value, weight);
-        };
+        let index = self.get_parameter_index(index);
+        self.set_parameter_value(index, value, weight);
     }
 
     pub fn set_part_opacity(&mut self, idx: usize, opacity: f32) {
@@ -309,9 +320,8 @@ impl Model {
     }
 
     pub fn add_parameter_value_by_id(&mut self, id: &str, value: f32, weight: f32) {
-        if let Some(index) = self.get_parameter_index(id) {
-            self.add_parameter_value(index, value, weight);
-        }
+        let index = self.get_parameter_index(id);
+        self.add_parameter_value(index, value, weight);
     }
 
     pub fn add_parameter_value(&mut self, idx: usize, value: f32, weight: f32) {
@@ -319,9 +329,8 @@ impl Model {
     }
 
     pub fn multiply_parameter_value_by_id(&mut self, id: &str, value: f32, weight: f32) {
-        if let Some(index) = self.get_parameter_index(id) {
-            self.multiply_parameter_value(index, value, weight);
-        }
+        let index = self.get_parameter_index(id);
+        self.multiply_parameter_value(index, value, weight);
     }
 
     pub fn multiply_parameter_value(&mut self, idx: usize, value: f32, weight: f32) {

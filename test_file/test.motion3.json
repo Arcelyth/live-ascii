@@ -20,6 +20,16 @@
       "Target": "Parameter",
       "Id": "ParamArmRA",
       "Segments": [0, 0, 1, 0.3, 0, 0.7, 10, 1.0, 10, 0, 2.0, 0]
+    },
+    {
+      "Target": "PartOpacity",
+      "Id": "PartArmA",
+      "Segments": [0, 0, 0, 2.1, 0]
+    },
+    {
+      "Target": "PartOpacity",
+      "Id": "PartArmB",
+      "Segments": [0, 0.99, 0, 2.1, 0.99]
     }
   ]
 }

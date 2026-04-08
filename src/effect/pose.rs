@@ -1,10 +1,8 @@
 use std::error::Error;
-use std::fmt;
 use std::fs;
 use std::path::Path;
 
-use serde::de::{self, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::model::Model;
 
@@ -28,26 +26,22 @@ pub struct PartItem {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PartData {
     pub part_id: String,
-    pub param_index: Option<usize>,
-    pub part_index: Option<usize>,
+    pub param_index: usize,
+    pub part_index: usize,
     pub link: Vec<PartData>,
 }
 
 impl PartData {
     pub fn initialize(&mut self, model: &mut Model) {
         self.param_index = model.get_parameter_index(&self.part_id);
-        self.part_index = Some(model.get_part_index(&self.part_id));
+        self.part_index = model.get_part_index(&self.part_id);
 
-        if let Some(p_idx) = self.param_index {
-            model.set_parameter_value(p_idx, 1.0, 1.0);
-        }
+        model.set_parameter_value(self.param_index, 1.0, 1.0);
 
         for link_item in &mut self.link {
-            link_item.part_index = Some(model.get_part_index(&link_item.part_id));
+            link_item.part_index = model.get_part_index(&link_item.part_id);
             link_item.param_index = model.get_parameter_index(&link_item.part_id);
-            if let Some(lp_idx) = link_item.param_index {
-                model.set_parameter_value(lp_idx, 1.0, 1.0);
-            }
+            model.set_parameter_value(self.param_index, 1.0, 1.0);
         }
     }
 }
@@ -78,15 +72,15 @@ impl Pose {
             for item in group {
                 let part_data = PartData {
                     part_id: item.id,
-                    param_index: None,
-                    part_index: None,
+                    param_index: 0,
+                    part_index: 0,
                     link: item
                         .link
                         .into_iter()
                         .map(|link_id| PartData {
                             part_id: link_id,
-                            param_index: None,
-                            part_index: None,
+                            param_index: 0,
+                            part_index: 0,
                             link: Vec::new(),
                         })
                         .collect(),
@@ -121,12 +115,8 @@ impl Pose {
 
                 let value = if j == begin_index { 1.0 } else { 0.0 };
 
-                if let Some(pi) = parts_index {
-                    model.set_part_opacity(pi, value);
-                }
-                if let Some(pai) = param_index {
-                    model.set_parameter_value(pai, value, 1.0);
-                }
+                model.set_part_opacity(parts_index, value);
+                model.set_parameter_value(param_index, value, 1.0);
             }
             begin_index += count;
         }
@@ -159,23 +149,22 @@ impl Pose {
 
         for i in begin_index..(begin_index + part_group_count) {
             let part_data = &self.part_groups[i];
+            let part_idx = part_data.part_index;
+            let param_idx = part_data.param_index;
+            if model.get_parameter_value(param_idx) > Self::EPSILON {
+                if visible_part_index >= 0 {
+                    break;
+                }
 
-            if let Some(param_idx) = part_data.param_index {
-                if model.get_parameter_value(param_idx) > Self::EPSILON {
-                    if visible_part_index >= 0 {
-                        break;
-                    }
+                visible_part_index = i as i32;
 
-                    visible_part_index = i as i32;
-
-                    if self.fade_time_seconds <= 0.0 {
+                if self.fade_time_seconds <= 0.0 {
+                    new_opacity = 1.0;
+                } else {
+                    new_opacity = model.get_part_opacity(part_idx);
+                    new_opacity += delta_time_seconds / self.fade_time_seconds;
+                    if new_opacity > 1.0 {
                         new_opacity = 1.0;
-                    } else if let Some(part_idx) = part_data.part_index {
-                        new_opacity = model.get_part_opacity(part_idx);
-                        new_opacity += delta_time_seconds / self.fade_time_seconds;
-                        if new_opacity > 1.0 {
-                            new_opacity = 1.0;
-                        }
                     }
                 }
             }
@@ -187,10 +176,7 @@ impl Pose {
         }
 
         for i in begin_index..(begin_index + part_group_count) {
-            let part_idx = match self.part_groups[i].part_index {
-                Some(idx) => idx,
-                None => continue,
-            };
+            let part_idx = self.part_groups[i].part_index;
 
             if visible_part_index == i as i32 {
                 model.set_part_opacity(part_idx, new_opacity);
@@ -211,8 +197,6 @@ impl Pose {
 
                 if current_opacity > a1 {
                     model.set_part_opacity(part_idx, a1);
-                } else {
-                    model.set_part_opacity(part_idx, current_opacity);
                 }
             }
         }
@@ -224,14 +208,10 @@ impl Pose {
                 continue;
             }
 
-            if let Some(part_idx) = group.part_index {
-                let opacity = model.get_part_opacity(part_idx);
+            let opacity = model.get_part_opacity(group.part_index);
 
-                for link_part in &group.link {
-                    if let Some(link_idx) = link_part.part_index {
-                        model.set_part_opacity(link_idx, opacity);
-                    }
-                }
+            for link_part in &group.link {
+                model.set_part_opacity(link_part.part_index, opacity);
             }
         }
     }
@@ -248,14 +228,14 @@ mod tests {
             part_groups: vec![
                 PartData {
                     part_id: "PartArmA".to_string(),
-                    param_index: None,
-                    part_index: None,
+                    param_index: 0,
+                    part_index: 0,
                     link: vec![],
                 },
                 PartData {
                     part_id: "PartArmB".to_string(),
-                    param_index: None,
-                    part_index: None,
+                    param_index: 0,
+                    part_index: 0,
                     link: vec![],
                 },
             ],
