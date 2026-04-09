@@ -70,8 +70,8 @@ fn parse_packet(buf: &[u8]) -> Option<Packet> {
 
     let mut lms = [[0.0f32; 2]; 68];
     for i in 0..68 {
-        lms[i][0] = cur.read_f32::<LittleEndian>().ok()?;
         lms[i][1] = cur.read_f32::<LittleEndian>().ok()?;
+        lms[i][0] = cur.read_f32::<LittleEndian>().ok()?;
     }
 
     let mut pnp_points = [[0.0f32; 3]; 70];
@@ -138,6 +138,7 @@ impl Tracker {
             latest: Arc::new(Mutex::new(None)),
         }
     }
+
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
         let socket = UdpSocket::bind("127.0.0.1:11573")?;
         let latest_thread = Arc::clone(&self.latest);

@@ -15,6 +15,7 @@ use ratatui::style::{Color as RatatuiColor, Style};
 use ratatui::text::{Line, Span, Text};
 
 use crate::live::json::*;
+use crate::tracker::*;
 use crate::model_setting::ModelSetting;
 
 pub enum OpPanel {
@@ -28,6 +29,7 @@ pub enum DebugPanel {
     PartOpacities,
     AppliedExp,
     PressedKeys,
+    Camera,
 }
 
 pub enum Panel {
@@ -48,7 +50,8 @@ pub struct Context {
     pub motion_list_state: ListState,
     // parameter debug panel
     pub param_list_state: ListState,
-
+    // camera debug offset
+    pub camera_offset: u16,
     pub current_op_panel: OpPanel,
     pub current_debug_panel: DebugPanel,
     pub current_panel: Panel,
@@ -58,11 +61,12 @@ pub struct Context {
     pub action_queue: Vec<Action>,
     pub active_expressions: std::collections::HashMap<String, usize>,
 
+    pub tracker: Tracker,
     pub camera: bool,
 }
 
 impl Context {
-    pub fn new(image: bool, model_setting: ModelSetting, base_dir: &str, camera: bool) -> Self {
+    pub fn new(image: bool, model_setting: ModelSetting, base_dir: &str, camera: bool, tracker: Tracker) -> Self {
         Self {
             width: 0,
             height: 0,
@@ -72,6 +76,7 @@ impl Context {
             model_setting,
             motion_list_state: ListState::default().with_selected(Some(0)),
             param_list_state: ListState::default().with_selected(Some(0)),
+            camera_offset: 0,
             current_op_panel: OpPanel::None,
             current_debug_panel: DebugPanel::None,
             current_panel: Panel::None,
@@ -80,6 +85,7 @@ impl Context {
             live_setting: None,
             action_queue: vec![],
             active_expressions: HashMap::new(),
+            tracker,
             camera,
         }
     }

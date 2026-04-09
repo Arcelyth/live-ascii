@@ -212,6 +212,38 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
             frame.render_stateful_widget(list_widget, list_area, &mut context.param_list_state);
         }
 
+        DebugPanel::Camera => {
+            let list_area = Rect::new(2, 20, 45, 30);
+            let border_fg = if let Panel::Debug = context.current_panel {
+                selected_border
+            } else {
+                param_list_border_fg
+            };
+
+            let tracker_data = format!("{:#?}", context.tracker.latest());
+
+            let p_widget = Paragraph::new(tracker_data)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(border_fg))
+                        .style(
+                            Style::default()
+                                .fg(param_list_border_fg)
+                                .add_modifier(Modifier::BOLD),
+                        )
+                        .title(" Tracker Data "),
+                )
+                .scroll((context.camera_offset, 0))
+                .style(
+                    Style::default()
+                        .fg(param_list_border_fg),
+                );
+
+            frame.render_widget(Clear, list_area);
+            frame.render_widget(p_widget, list_area);
+        }
+
         _ => {}
     }
 

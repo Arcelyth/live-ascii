@@ -93,7 +93,6 @@ impl Renderer {
         model_setting: &mut ModelSetting,
         em: &mut ExpressionManager,
         pose: &mut Option<Pose>,
-        tracker: &mut Tracker,
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
@@ -115,7 +114,7 @@ impl Renderer {
         let mut face_controller = FaceController::new(0.3);
 
         if context.camera {
-            tracker.run()?;
+            context.tracker.run()?;
         }
 
         loop {
@@ -213,9 +212,22 @@ impl Renderer {
                                 KeyCode::Char('4') => {
                                     context.current_debug_panel = DebugPanel::PressedKeys;
                                 }
+                                KeyCode::Char('5') => {
+                                    context.current_debug_panel = DebugPanel::Camera;
+                                }
+                                KeyCode::Up => match context.current_debug_panel {
+                                    DebugPanel::Camera => {
+                                        context.camera_offset = context.camera_offset.saturating_sub(1);
+                                    }
+                                    _ => context.param_list_state.select_previous(),
+                                },
+                                KeyCode::Down => match context.current_debug_panel {
+                                    DebugPanel::Camera => {
+                                        context.camera_offset = context.camera_offset.saturating_add(1);
+                                    }
 
-                                KeyCode::Up => context.param_list_state.select_previous(),
-                                KeyCode::Down => context.param_list_state.select_next(),
+                                    _ => context.param_list_state.select_next(),
+                                },
                                 KeyCode::Char('m') => {
                                     context.current_panel = Panel::Op;
                                     context.current_op_panel = OpPanel::Motions;
@@ -286,7 +298,7 @@ impl Renderer {
 
             // tracking
             if context.camera {
-                if let Some(packet) = tracker.latest() {
+                if let Some(packet) = context.tracker.latest() {
                     if packet.success == 1 {
                         face_controller.update_parameters(&mut self.model, &packet);
                     }
@@ -296,10 +308,6 @@ impl Renderer {
             self.model.save_parameters();
 
             em.update_motion(&mut self.model, delta_time);
-
-            if let Some(pose) = pose {
-                pose.update_parameters(&mut self.model, delta_time);
-            }
 
             // applying manioulation to Drawable
             unsafe {

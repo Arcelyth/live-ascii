@@ -812,6 +812,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glam"
+version = "0.32.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f70749695b063ecbf6b62949ccccde2e733ec3ecbbd71d467dca4e5c6c97cca0"
+
+[[package]]
 name = "half"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1072,6 +1078,7 @@ dependencies = [
  "clap",
  "crossterm",
  "dotenvy",
+ "glam",
  "image",
  "libc",
  "rand 0.10.0",

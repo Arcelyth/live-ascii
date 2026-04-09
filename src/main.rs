@@ -9,10 +9,10 @@ use live_ascii::context::*;
 use live_ascii::effect::pose::*;
 use live_ascii::expression::manager::*;
 use live_ascii::ffi::*;
-use live_ascii::tracker::*;
 use live_ascii::live::json::*;
 use live_ascii::model_setting::ModelSetting;
 use live_ascii::motion::manager::*;
+use live_ascii::tracker::*;
 
 use live_ascii::renderer::*;
 use live_ascii::utils::*;
@@ -81,9 +81,17 @@ fn main() -> Result<(), Box<dyn Error>> {
             textures.push(image::DynamicImage::ImageRgba8(texture));
         }
     }
+    // initalize tracker
+    let mut tracker = Tracker::new();
 
     // initialize terminal
-    let mut context = Context::new(false, model_setting.clone(), base_dir.to_str().unwrap(), args.camera);
+    let mut context = Context::new(
+        false,
+        model_setting.clone(),
+        base_dir.to_str().unwrap(),
+        args.camera,
+        tracker,
+    );
 
     // load live json
     let live = Live::from_path(base_dir.to_str().unwrap(), &format!("{}.live.json", name));
@@ -100,9 +108,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     // initialize expression
     let mut em = ExpressionManager::new();
 
-    // initalize tracker 
-    let mut tracker = Tracker::new();
-
     let mut pos = if let Some(pose_file) = model_setting.get_pose_file_name() {
         Some(Pose::from_path(
             base_dir.to_str().unwrap(),
@@ -112,7 +117,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         None
     };
 
-    renderer.render(&mut context, &mut mm, &mut model_setting, &mut em, &mut pos, &mut tracker)?;
+    renderer.render(
+        &mut context,
+        &mut mm,
+        &mut model_setting,
+        &mut em,
+        &mut pos,
+    )?;
 
     Ok(())
 }
