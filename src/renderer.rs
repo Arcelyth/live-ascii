@@ -217,13 +217,15 @@ impl Renderer {
                                 }
                                 KeyCode::Up => match context.current_debug_panel {
                                     DebugPanel::Camera => {
-                                        context.camera_offset = context.camera_offset.saturating_sub(1);
+                                        context.camera_offset =
+                                            context.camera_offset.saturating_sub(1);
                                     }
                                     _ => context.param_list_state.select_previous(),
                                 },
                                 KeyCode::Down => match context.current_debug_panel {
                                     DebugPanel::Camera => {
-                                        context.camera_offset = context.camera_offset.saturating_add(1);
+                                        context.camera_offset =
+                                            context.camera_offset.saturating_add(1);
                                     }
 
                                     _ => context.param_list_state.select_next(),
@@ -305,6 +307,9 @@ impl Renderer {
                 }
             }
 
+            if let Some(pose) = pose {
+                pose.update_parameters(&mut self.model, delta_time);
+            }
             self.model.save_parameters();
 
             em.update_motion(&mut self.model, delta_time);
