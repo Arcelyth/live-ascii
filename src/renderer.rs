@@ -545,17 +545,28 @@ impl Renderer {
         Ok(())
     }
 
-    fn transform_to_screen(&self, pos: CsmVector2, width: u16, height: u16) -> Vec3 {
-        let transformed_x = pos.x * self.scale + self.offset_x;
-        let transformed_y = pos.y * self.scale + self.offset_y;
+    pub fn transform_to_screen(&self, vertex: CsmVector2, width: u16, height: u16) -> Vec3 {
+        let w = width as f32;
+        let h = height as f32;
 
-        let mut x = (transformed_x + 1.0) / 2.0;
-        let mut y = 1.0 - (transformed_y + 1.0) / 2.0;
+        let font_aspect_ratio = 0.5;
 
-        x *= width as f32;
-        y *= height as f32;
+        let scale_x = w / 2.0;
+        let scale_y = (h / font_aspect_ratio) / 2.0;
+        let base_scale = scale_x.min(scale_y);
 
-        Vec3 { x, y, z: 0.0 }
+        let final_scale = base_scale * self.scale;
+
+        let screen_x = (vertex.x * final_scale) + (w / 2.0) + (self.offset_x * w);
+
+        let screen_y =
+            (-vertex.y * final_scale * font_aspect_ratio) + (h / 2.0) + (self.offset_y * h);
+
+        Vec3 {
+            x: screen_x,
+            y: screen_y,
+            z: 0.0,
+        }
     }
 
     pub fn find_param_index(&self, target_id: &str) -> Option<usize> {
