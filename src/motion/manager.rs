@@ -2,6 +2,7 @@ use crate::motion::amotion::*;
 use crate::model::Model;
 use crate::motion::queue::*;
 
+#[derive(Debug)]
 pub struct MotionManager {
     pub qm: MotionQueueManager,
     pub current_prior: usize,

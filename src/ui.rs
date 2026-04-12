@@ -7,8 +7,10 @@ use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph};
 
 use crate::context::*;
 use crate::model::Model;
+use crate::expression::manager::*;
+use crate::motion::manager::*;
 
-pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(), Box<dyn Error>> {
+pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionManager, em: &ExpressionManager) -> Result<(), Box<dyn Error>> {
     let model_text = context.buffer_to_text();
     let model_widget = Paragraph::new(model_text);
 
@@ -175,7 +177,7 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
             frame.render_stateful_widget(list_widget, list_area, &mut context.param_list_state);
         }
 
-        DebugPanel::PressedKeys => {
+        DebugPanel::ActionQueue => {
             let list_area = Rect::new(2, 20, 45, 20);
             let border_fg = if let Panel::Debug = context.current_panel {
                 selected_border
@@ -184,9 +186,9 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
             };
 
             let items: Vec<ListItem> = context
-                .get_pressed_keys()
+                .action_queue
                 .iter()
-                .map(|m| ListItem::new(format!("{}", m)))
+                .map(|m| ListItem::new(format!("{:?}", m)))
                 .collect();
 
             let list_widget = List::new(items)
@@ -199,7 +201,7 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
                                 .fg(param_list_border_fg)
                                 .add_modifier(Modifier::BOLD),
                         )
-                        .title(" Applied Expressions "),
+                        .title(" Action Queue "),
                 )
                 .highlight_style(
                     Style::default()
@@ -243,6 +245,39 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model) -> Result<(),
             frame.render_widget(Clear, list_area);
             frame.render_widget(p_widget, list_area);
         }
+
+        DebugPanel::Manager => {
+            let list_area = Rect::new(2, 20, 45, 30);
+            let border_fg = if let Panel::Debug = context.current_panel {
+                selected_border
+            } else {
+                param_list_border_fg
+            };
+
+            let tracker_data = format!("{:#?}\n {:#?}", mm, em);
+
+            let p_widget = Paragraph::new(tracker_data)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(border_fg))
+                        .style(
+                            Style::default()
+                                .fg(param_list_border_fg)
+                                .add_modifier(Modifier::BOLD),
+                        )
+                        .title(" Motion Manager and Expression Manager"),
+                )
+                .scroll((context.context_offset, 0))
+                .style(
+                    Style::default()
+                        .fg(param_list_border_fg),
+                );
+
+            frame.render_widget(Clear, list_area);
+            frame.render_widget(p_widget, list_area);
+        }
+
 
         _ => {}
     }

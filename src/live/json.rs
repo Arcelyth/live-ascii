@@ -102,14 +102,20 @@ impl Live {
 
     pub fn handle_hotkeys(
         &self,
-        pressed_keys: &HashSet<String>,
-        last_pressed_keys: &HashSet<String>,
+        key: String,
+        modifiers: Vec<String>,
         action_queue: &mut Vec<Action>,
     ) {
+        let mut current_pressed = std::collections::HashSet::with_capacity(modifiers.len() + 1);
+        if !key.is_empty() {
+            current_pressed.insert(key);
+        }
+        for m in modifiers {
+            current_pressed.insert(m);
+        }
+
         for hotkey in self.hotkeys.iter() {
-            let is_triggered = hotkey.is_trigger(pressed_keys);
-            let was_triggered = hotkey.is_trigger(last_pressed_keys);
-            if is_triggered != was_triggered {
+            if hotkey.is_trigger(&current_pressed) {
                 hotkey.apply(action_queue);
             }
         }

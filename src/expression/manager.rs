@@ -4,6 +4,7 @@ use crate::model::Model;
 use crate::motion::amotion::*;
 use crate::motion::queue::*;
 
+#[derive(Debug)]
 pub struct ExpressionManager {
     pub qm: MotionQueueManager,
     current_prior: usize,
@@ -81,7 +82,6 @@ impl ExpressionManager {
                 if motion_entry.is_triggered_fade_out {
                     motion_entry.start_fade_out(motion_entry.fade_out_seconds, user_time);
                 }
-
                 updated = true;
                 expression_index += 1;
             }

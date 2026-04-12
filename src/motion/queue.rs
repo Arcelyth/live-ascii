@@ -1,7 +1,11 @@
+use std::fmt;
+
 use crate::model::*;
 use crate::motion::amotion::*;
 use crate::motion::json::*;
 
+
+#[derive(Debug)]
 pub struct MotionQueueEntry {
     pub id: usize,
     pub auto_delete: bool,
@@ -63,6 +67,17 @@ pub struct MotionQueueManager {
     pub motions: Vec<MotionQueueEntry>,
     pub event_callback: Option<Box<dyn Fn(&str)>>,
     pub id_counter: usize,
+}
+
+impl fmt::Debug for MotionQueueManager {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MotionQueueManager")
+            .field("user_time_seconds", &self.user_time_seconds)
+            .field("motions", &self.motions)
+            .field("event_callback", &"<callback>")  
+            .field("id_counter", &self.id_counter)
+            .finish()
+    }
 }
 
 impl MotionQueueManager {

@@ -8,12 +8,14 @@ use std::time::Instant;
 
 use crossterm::{
     cursor,
-    event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
+    event::{
+        self, Event, KeyCode, KeyEvent, KeyEventKind
+    },
     execute,
     terminal::{self},
 };
 use image::{DynamicImage, GenericImageView};
-use ratatui::{Terminal, backend::CrosstermBackend, widgets::Paragraph};
+use ratatui::{Terminal, backend::CrosstermBackend};
 
 use crate::context::*;
 use crate::controller::*;
@@ -28,7 +30,6 @@ use crate::model_setting::ModelSetting;
 use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
-use crate::tracker::*;
 use crate::ui::*;
 use crate::utils::*;
 
@@ -121,64 +122,26 @@ impl Renderer {
             let frame_start = Instant::now();
 
             if event::poll(Duration::from_millis(1))? {
-                if let Event::Key(key_event @ KeyEvent { code, .. }) = event::read()? {
-                    let key_str = key_code_to_str(code);
-                    match key_event.kind {
-                        KeyEventKind::Press => {
-                            if context.pressed_keys.contains(&key_str) {
-                                context.pressed_keys.remove(&key_str);
-                            } else {
-                                context.pressed_keys.insert(key_str);
-                            }
-                        }
-                        KeyEventKind::Release => {
-                            context.pressed_keys.remove(&key_str);
-                        }
-                        _ => {}
-                    }
+                if let Event::Key(KeyEvent {
+                    code,
+                    modifiers,
+                    kind,
+                    ..
+                }) = event::read()?
+                {
+                    if kind == KeyEventKind::Press {
+                        let key_str = key_code_to_str(code);
+                        let mods = modifiers_to_vec(modifiers);
 
-                    match context.current_panel {
-                        Panel::None => match code {
-                            KeyCode::Char('q') => break,
-                            KeyCode::Up => self.offset_y -= 0.1,
-                            KeyCode::Down => self.offset_y += 0.1,
-                            KeyCode::Left => self.offset_x -= 0.1,
-                            KeyCode::Right => self.offset_x += 0.1,
-                            KeyCode::Char('=') | KeyCode::Char('+') => self.scale *= 1.1,
-                            KeyCode::Char('-') => self.scale *= 0.9,
-                            KeyCode::Char('m') => {
-                                context.current_panel = Panel::Op;
-                                context.current_op_panel = OpPanel::Motions;
-                            }
-                            KeyCode::Char('p') => {
-                                context.current_panel = Panel::Debug;
-                                if let DebugPanel::None = context.current_debug_panel {
-                                    context.current_debug_panel = DebugPanel::Parameters;
-                                }
-                            }
-
-                            _ => {}
-                        },
-                        Panel::Op => match context.current_op_panel {
-                            OpPanel::Motions => match code {
-                                KeyCode::Char('q') | KeyCode::Esc => {
-                                    context.current_panel = Panel::None;
-                                    context.current_op_panel = OpPanel::None;
-                                }
-                                KeyCode::Up => context.motion_list_state.select_previous(),
-                                KeyCode::Down => context.motion_list_state.select_next(),
-                                KeyCode::Enter => {
-                                    if let Some(idx) = context.motion_list_state.selected() {
-                                        let file = model_setting.get_all_motion_names()[idx];
-                                        let motion_data =
-                                            MotionData::from_path(&context.base_dir, file)?;
-                                        let motion = CubismMotion::new(motion_data);
-                                        mm.start_motion_priority(motion, true, 0);
-                                    }
-                                    if let Some(p) = pose {
-                                        p.reset(&mut self.model);
-                                    }
-                                }
+                        match context.current_panel {
+                            Panel::None => match code {
+                                KeyCode::Char('q') => break,
+                                KeyCode::Up => self.offset_y -= 0.1,
+                                KeyCode::Down => self.offset_y += 0.1,
+                                KeyCode::Left => self.offset_x -= 0.1,
+                                KeyCode::Right => self.offset_x += 0.1,
+                                KeyCode::Char('=') | KeyCode::Char('+') => self.scale *= 1.1,
+                                KeyCode::Char('-') => self.scale *= 0.9,
                                 KeyCode::Char('m') => {
                                     context.current_panel = Panel::Op;
                                     context.current_op_panel = OpPanel::Motions;
@@ -189,90 +152,120 @@ impl Renderer {
                                         context.current_debug_panel = DebugPanel::Parameters;
                                     }
                                 }
+
                                 _ => {}
                             },
-                            OpPanel::None => {}
-                        },
-                        Panel::Debug => match context.current_debug_panel {
-                            DebugPanel::None => {}
-                            _ => match code {
-                                KeyCode::Char('q') | KeyCode::Esc => {
-                                    context.current_panel = Panel::None;
-                                    context.current_debug_panel = DebugPanel::None;
-                                }
-                                KeyCode::Char('1') => {
-                                    context.current_debug_panel = DebugPanel::Parameters;
-                                }
-                                KeyCode::Char('2') => {
-                                    context.current_debug_panel = DebugPanel::PartOpacities;
-                                }
-                                KeyCode::Char('3') => {
-                                    context.current_debug_panel = DebugPanel::AppliedExp;
-                                }
-                                KeyCode::Char('4') => {
-                                    context.current_debug_panel = DebugPanel::PressedKeys;
-                                }
-                                KeyCode::Char('5') => {
-                                    context.current_debug_panel = DebugPanel::Camera;
-                                }
-                                KeyCode::Up => match context.current_debug_panel {
-                                    DebugPanel::Camera => {
-                                        context.camera_offset =
-                                            context.camera_offset.saturating_sub(1);
+                            Panel::Op => match context.current_op_panel {
+                                OpPanel::Motions => match code {
+                                    KeyCode::Char('q') | KeyCode::Esc => {
+                                        context.current_panel = Panel::None;
+                                        context.current_op_panel = OpPanel::None;
                                     }
-                                    _ => context.param_list_state.select_previous(),
+                                    KeyCode::Up => context.motion_list_state.select_previous(),
+                                    KeyCode::Down => context.motion_list_state.select_next(),
+                                    KeyCode::Enter => {
+                                        if let Some(idx) = context.motion_list_state.selected() {
+                                            let file = model_setting.get_all_motion_names()[idx];
+                                            let motion_data =
+                                                MotionData::from_path(&context.base_dir, file)?;
+                                            let motion = CubismMotion::new(motion_data);
+                                            mm.start_motion_priority(motion, true, 0);
+                                        }
+                                        if let Some(p) = pose {
+                                            p.reset(&mut self.model);
+                                        }
+                                    }
+                                    KeyCode::Char('m') => {
+                                        context.current_panel = Panel::Op;
+                                        context.current_op_panel = OpPanel::Motions;
+                                    }
+                                    KeyCode::Char('p') => {
+                                        context.current_panel = Panel::Debug;
+                                        if let DebugPanel::None = context.current_debug_panel {
+                                            context.current_debug_panel = DebugPanel::Parameters;
+                                        }
+                                    }
+                                    _ => {}
                                 },
-                                KeyCode::Down => match context.current_debug_panel {
-                                    DebugPanel::Camera => {
-                                        context.camera_offset =
-                                            context.camera_offset.saturating_add(1);
+                                OpPanel::None => {}
+                            },
+                            Panel::Debug => match context.current_debug_panel {
+                                DebugPanel::None => {}
+                                _ => match code {
+                                    KeyCode::Char('q') | KeyCode::Esc => {
+                                        context.current_panel = Panel::None;
+                                        context.current_debug_panel = DebugPanel::None;
+                                    }
+                                    KeyCode::Char('1') => {
+                                        context.current_debug_panel = DebugPanel::Parameters;
+                                    }
+                                    KeyCode::Char('2') => {
+                                        context.current_debug_panel = DebugPanel::PartOpacities;
+                                    }
+                                    KeyCode::Char('3') => {
+                                        context.current_debug_panel = DebugPanel::AppliedExp;
+                                    }
+                                    KeyCode::Char('4') => {
+                                        context.current_debug_panel = DebugPanel::ActionQueue;
+                                    }
+                                    KeyCode::Char('5') => {
+                                        context.current_debug_panel = DebugPanel::Camera;
+                                    }
+                                    KeyCode::Char('6') => {
+                                        context.current_debug_panel = DebugPanel::Manager;
                                     }
 
-                                    _ => context.param_list_state.select_next(),
+                                    KeyCode::Up => match context.current_debug_panel {
+                                        DebugPanel::Camera => {
+                                            context.camera_offset =
+                                                context.camera_offset.saturating_sub(1);
+                                        }
+                                        DebugPanel::Manager => {
+                                            context.context_offset =
+                                                context.context_offset.saturating_sub(1);
+                                        }
+
+                                        _ => context.param_list_state.select_previous(),
+                                    },
+                                    KeyCode::Down => match context.current_debug_panel {
+                                        DebugPanel::Camera => {
+                                            context.camera_offset =
+                                                context.camera_offset.saturating_add(1);
+                                        }
+                                        DebugPanel::Manager => {
+                                            context.context_offset =
+                                                context.context_offset.saturating_add(1);
+                                        }
+
+                                        _ => context.param_list_state.select_next(),
+                                    },
+                                    KeyCode::Char('m') => {
+                                        context.current_panel = Panel::Op;
+                                        context.current_op_panel = OpPanel::Motions;
+                                    }
+                                    _ => {}
                                 },
-                                KeyCode::Char('m') => {
-                                    context.current_panel = Panel::Op;
-                                    context.current_op_panel = OpPanel::Motions;
-                                }
-                                _ => {}
                             },
-                        },
+                        }
+                        if let Some(live) = &context.live_setting {
+                            live.handle_hotkeys(key_str, mods, &mut context.action_queue);
+                        }
                     }
                 }
             }
 
-            if let Some(live) = &context.live_setting {
-                live.handle_hotkeys(
-                    &context.pressed_keys,
-                    &context.last_pressed_keys,
-                    &mut context.action_queue,
-                );
-            }
-
-            context.last_pressed_keys = context.pressed_keys.clone();
-
             for action in &context.action_queue {
                 match action {
                     Action::SetUnsetExpression(file) => {
-                        let mut need_start = true;
-
                         if let Some(&saved_id) = context.active_expressions.get(file) {
-                            if !em.qm.is_finished(saved_id) {
-                                if let Some(entry) =
-                                    em.qm.motions.iter_mut().find(|e| e.id == saved_id)
-                                {
-                                    let fade = entry.motion.base().fade_out_seconds;
-                                    let user_time = em.qm.user_time_seconds;
-                                    entry.start_fade_out(fade, user_time);
-                                }
-                                context.active_expressions.remove(file);
-                                need_start = false;
-                            } else {
-                                context.active_expressions.remove(file);
+                            if let Some(entry) = em.qm.motions.iter_mut().find(|e| e.id == saved_id)
+                            {
+                                let fade = entry.motion.base().fade_out_seconds;
+                                let user_time = em.qm.user_time_seconds;
+                                entry.start_fade_out(fade, user_time);
                             }
-                        }
-
-                        if need_start {
+                            context.active_expressions.remove(file);
+                        } else {
                             if let Ok(exp) = ExpMotion::from_path(&context.base_dir, file) {
                                 let new_id = em.qm.start_motion(exp, false);
                                 context.active_expressions.insert(file.clone(), new_id);
@@ -285,6 +278,7 @@ impl Renderer {
             context.action_queue.clear();
 
             context.update()?;
+
             context.clear();
             let needed = (context.width as usize) * (context.height as usize);
             if mask_buffer.len() != needed {
@@ -297,7 +291,6 @@ impl Renderer {
             last_frame = Instant::now();
 
             mm.update_motion(&mut self.model, delta_time);
-
             // tracking
             if context.camera {
                 if let Some(packet) = context.tracker.latest() {
@@ -527,7 +520,7 @@ impl Renderer {
             }
 
             // draw ui
-            terminal.draw(|f| match ui(f, context, &self.model) {
+            terminal.draw(|f| match ui(f, context, &self.model, &mm, &em) {
                 Ok(_) => {}
                 Err(e) => {
                     println!("{:?}", e);

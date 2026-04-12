@@ -7,7 +7,7 @@ use crate::model::*;
 use crate::motion::json::*;
 use crate::motion::queue::*;
 
-pub trait ACubismMotion {
+pub trait ACubismMotion: std::fmt::Debug {
     fn to_exp_motion(&self) -> Option<&ExpMotion> {
         None
     }
@@ -31,6 +31,7 @@ pub trait ACubismMotion {
     ) -> Vec<String>;
 }
 
+#[derive(Debug)]
 pub struct MotionBase {
     pub fade_in_seconds: f32,
     pub fade_out_seconds: f32,
@@ -58,6 +59,7 @@ impl MotionBase {
     }
 }
 
+#[derive(Debug)]
 pub struct CubismMotion {
     pub base: MotionBase,
     source_frame_rate: f32,
@@ -85,14 +87,6 @@ impl CubismMotion {
             model_curve_id_lip_sync: vec![],
             model_curve_id_opacity: vec![],
             model_opacity: 1.,
-        }
-    }
-
-    pub fn get_duration(&self) -> f32 {
-        if self.base.is_loop {
-            -1.
-        } else {
-            self.loop_duration_seconds
         }
     }
 
@@ -443,7 +437,7 @@ impl ACubismMotion for CubismMotion {
     fn update_fade_weight(&self, entry: &mut MotionQueueEntry, user_time: f32) -> f32 {
         let mut fade_weight = self.base.weight;
 
-        let fade_in = if self.base.fade_in_seconds <= 0.0 {
+        let fade_in = if self.base.fade_in_seconds == 0.0 {
             1.0
         } else {
             get_easing_sine(
@@ -458,9 +452,10 @@ impl ACubismMotion for CubismMotion {
         };
 
         fade_weight = fade_weight * fade_in * fade_out;
-        entry.set_state(user_time, fade_weight);
 
-        fade_weight.clamp(0.0, 1.0)
+        let fw = fade_weight.clamp(0.0, 1.0);
+        entry.set_state(user_time, fw);
+        fw
     }
 
     fn get_fired_events(
@@ -480,6 +475,8 @@ impl ACubismMotion for CubismMotion {
     }
 }
 
+
+#[derive(Debug)]
 pub enum MotionBehavior {
     MotionBehaviorV1,
     MotionBehaviorV2,

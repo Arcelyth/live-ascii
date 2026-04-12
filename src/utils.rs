@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::ptr;
 
-use crossterm::event::{KeyCode, ModifierKeyCode};
+use crossterm::event::{KeyCode, KeyModifiers, ModifierKeyCode};
 
 pub fn allocate_aligned(size: usize, alignment: usize) -> *mut u8 {
     let mut ptr: *mut libc::c_void = ptr::null_mut();
@@ -59,10 +59,27 @@ pub fn key_code_to_str(code: KeyCode) -> String {
             ModifierKeyCode::RightSuper => "RightSuper".to_string(),
             ModifierKeyCode::RightHyper => "RightHyper".to_string(),
             ModifierKeyCode::RightMeta => "RightMeta".to_string(),
-            _ => "".to_string(), 
-        }
+            _ => "".to_string(),
+        },
         _ => "".to_string(),
     }
+}
+
+pub fn modifiers_to_vec(modifiers: KeyModifiers) -> Vec<String> {
+    let mut mods = Vec::new();
+    if modifiers.contains(KeyModifiers::CONTROL) {
+        mods.push("Control".to_string());
+    }
+    if modifiers.contains(KeyModifiers::ALT) {
+        mods.push("Alt".to_string());
+    }
+    if modifiers.contains(KeyModifiers::SHIFT) {
+        mods.push("Shift".to_string());
+    }
+    if modifiers.contains(KeyModifiers::SUPER) {
+        mods.push("Super".to_string());
+    }
+    mods
 }
 
 pub fn get_file_name(filename: &str) -> &str {

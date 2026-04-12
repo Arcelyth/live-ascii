@@ -18,26 +18,32 @@ use crate::live::json::*;
 use crate::tracker::*;
 use crate::model_setting::ModelSetting;
 
+#[derive(Debug)]
 pub enum OpPanel {
     None,
     Motions,
 }
 
+#[derive(Debug)]
 pub enum DebugPanel {
     None,
     Parameters,
     PartOpacities,
     AppliedExp,
-    PressedKeys,
+    ActionQueue, 
     Camera,
+    Manager,
 }
 
+#[derive(Debug)]
 pub enum Panel {
     None,
     Op,
     Debug,
 }
 
+
+#[derive(Debug)]
 pub struct Context {
     pub width: u16,
     pub height: u16,
@@ -52,11 +58,10 @@ pub struct Context {
     pub param_list_state: ListState,
     // camera debug offset
     pub camera_offset: u16,
+    pub context_offset: u16,
     pub current_op_panel: OpPanel,
     pub current_debug_panel: DebugPanel,
     pub current_panel: Panel,
-    pub pressed_keys: HashSet<String>,
-    pub last_pressed_keys: HashSet<String>,
     pub live_setting: Option<Live>,
     pub action_queue: Vec<Action>,
     pub active_expressions: std::collections::HashMap<String, usize>,
@@ -77,11 +82,10 @@ impl Context {
             motion_list_state: ListState::default().with_selected(Some(0)),
             param_list_state: ListState::default().with_selected(Some(0)),
             camera_offset: 0,
+            context_offset: 0,
             current_op_panel: OpPanel::None,
             current_debug_panel: DebugPanel::None,
             current_panel: Panel::None,
-            pressed_keys: HashSet::new(),
-            last_pressed_keys: HashSet::new(),
             live_setting: None,
             action_queue: vec![],
             active_expressions: HashMap::new(),
@@ -173,7 +177,4 @@ impl Context {
         self.active_expressions.keys().map(|s| s.as_str()).collect()
     }
 
-    pub fn get_pressed_keys(&self) -> Vec<&str> {
-        self.pressed_keys.iter().map(|s| s.as_str()).collect()
-    }
 }

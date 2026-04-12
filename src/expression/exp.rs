@@ -7,18 +7,21 @@ use crate::model::Model;
 use crate::motion::amotion::*;
 use crate::motion::queue::*;
 
+#[derive(Debug)]
 pub enum ExpBlendType {
     Add,
     Multiply,
     Overwrite,
 }
 
+#[derive(Debug)]
 pub struct ExpParam {
     pub id: String,
     pub blend_type: ExpBlendType,
     pub value: f32,
 }
 
+#[derive(Debug)]
 pub struct ExpValue {
     pub id: String,
     pub add_value: f32,
@@ -34,6 +37,7 @@ impl ExpValue {
     }
 }
 
+#[derive(Debug)]
 pub struct ExpMotion {
     pub base: MotionBase,
     pub fade_weight: f32,
@@ -50,8 +54,17 @@ impl ExpMotion {
             .map_err(|e| format!("Failed to parse JSON ({:?}): {}", full_path, e))?;
 
         let mut base = MotionBase::new();
-        base.fade_in_seconds = exp3.fade_in_time;
-        base.fade_out_seconds = exp3.fade_out_time;
+        base.fade_in_seconds = if exp3.fade_in_time <= 0.0 {
+            1.0
+        } else {
+            exp3.fade_in_time
+        };
+        base.fade_out_seconds = if exp3.fade_out_time <= 0.0 {
+            1.0
+        } else {
+            exp3.fade_out_time
+        };
+        base.is_loop = false;
 
         let params = exp3
             .parameters
@@ -84,7 +97,7 @@ impl ExpMotion {
         model: &mut Model,
         _user_time_s: f32,
         weight: f32,
-        qe: MotionQueueEntry,
+        qe: &mut MotionQueueEntry,
     ) {
         for param in &self.params {
             match param.blend_type {
@@ -150,9 +163,15 @@ impl ExpMotion {
                     };
 
                     if expression_index == 0 {
-                        ep_val.add_value = target_add;
-                        ep_val.mul_value = target_mul;
-                        ep_val.ow_value = target_set;
+                        ep_val.add_value =
+                            self.cal_value(default_additive, target_add, fade_weight);
+                        ep_val.mul_value =
+                            self.cal_value(default_multiply, target_mul, fade_weight);
+                        ep_val.ow_value =
+                            self.cal_value(current_model_val, target_set, fade_weight);
+                    //                        ep_val.add_value = target_add;
+                    //                        ep_val.mul_value = target_mul;
+                    //                        ep_val.ow_value = target_set;
                     } else {
                         ep_val.add_value =
                             self.cal_value(ep_val.add_value, target_add, fade_weight);
@@ -188,10 +207,19 @@ impl ACubismMotion for ExpMotion {
 
     fn update_parameters(
         &mut self,
-        _model: &mut Model,
-        _qe: &mut MotionQueueEntry,
-        _user_time_s: f32,
+        model: &mut Model,
+        qe: &mut MotionQueueEntry,
+        user_time_s: f32,
     ) {
+        if !qe.available || qe.finished {
+            return;
+        }
+        self.setup_motion_queue_entry(qe, user_time_s);
+        let fade_weight = self.update_fade_weight(qe, user_time_s);
+        self.do_update_parameters(model, user_time_s, fade_weight, qe);
+        if qe.end_time_seconds > 0. && qe.end_time_seconds < user_time_s {
+            qe.finished = true;
+        }
     }
 
     fn adjust_end_time(&self, qe: &mut MotionQueueEntry) {

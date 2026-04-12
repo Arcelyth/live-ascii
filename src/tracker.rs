@@ -128,6 +128,7 @@ fn parse_packet(buf: &[u8]) -> Option<Packet> {
     })
 }
 
+#[derive(Debug)]
 pub struct Tracker {
     latest: Arc<Mutex<Option<Packet>>>,
 }
