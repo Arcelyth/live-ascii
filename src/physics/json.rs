@@ -32,15 +32,15 @@ pub struct PhysicsMeta {
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Force {
-    gravity: Vector2,
-    wind: Vector2,
+    pub gravity: Vector2,
+    pub wind: Vector2,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct DictEntry {
-    id: String,
-    name: String,
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
@@ -90,8 +90,8 @@ pub struct PhysicsOutput {
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "PascalCase")]
 pub struct Vector2 {
-    x: f32,
-    y: f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
