@@ -1,4 +1,5 @@
 use std::slice;
+use std::f32::consts::PI;
 
 use glam::Vec2;
 
@@ -640,6 +641,41 @@ impl Physics {
         delta_time: f32,
         air_resistance: f32,
     ) {
+        strand[0].position = total_translation;
+        let total_radian = total_angel.to_radians();
+        let current_gravity: Vec2 = total_radian.sin_cos().into();
+        let current_gravity = current_gravity.normalize();
+        for i in 0..strand.len() {
+            strand[i].force = current_gravity * strand[i].acceleration + wind_direction;
+            strand[i].last_position = strand[i].position;
+            let delay = strand[i].delay * delta_time * 30.;
+            let mut direction = strand[i].position - strand[i-1].position;
+            let radian = direction_to_radian(strand[i].last_gravity, current_gravity) / air_resistance; 
+
+            let rotation = Vec2::from_angle(radian);
+            direction = Vec2::new(
+                direction.x * rotation.x - direction.y * rotation.y,
+                direction.x * rotation.y + direction.y * rotation.x,
+            );
+            strand[i].position = strand[i-1].position + direction;
+            let velocity = Vec2::new(
+                strand[i].velocity.x * delay,
+                strand[i].velocity.y * delay
+            );
+            let force = strand[i].force * delay * delay;
+            strand[i].position = strand[i].position + velocity + force;
+            let mut new_direction = strand[i].position - strand[i - 1].position;
+            new_direction = new_direction.normalize();
+            strand[i].position = strand[i-1].position + new_direction * strand[i].radius;
+            if strand[i].position.x.abs() < threshold_value {
+                strand[i].position.x = 0.;
+            }
+            if delay != 0. {
+                strand[i].velocity = (strand[i].position - strand[i].last_position) / delay * strand[i].mobility;
+            }
+            strand[i].force = Vec2::ZERO;
+            strand[i].last_gravity = current_gravity;
+        }
     }
 }
 
@@ -750,12 +786,6 @@ pub fn get_input_angle_from_normalized(
     ) * weight;
 }
 
-pub fn direction_to_radian(from: Vec2, to: Vec2) -> f32 {
-    let dot = from.dot(to);
-    let det = from.x * to.y - from.y * to.x;
-    det.atan2(dot)
-}
-
 pub fn get_output_translation_x(
     translation: Vec2,
     _particles: &[PhysicsParticle],
@@ -818,4 +848,33 @@ pub fn get_output_scale_translation_y(translation_scale: Vec2, _angle_scale: f32
 
 pub fn get_output_scale_angle(_translation_scale: Vec2, angle_scale: f32) -> f32 {
     angle_scale
+}
+
+// math 
+
+pub fn direction_to_radian(from: Vec2, to: Vec2) -> f32 {
+    let q1 = to.y.atan2(to.x);
+    let q2 = from.y.atan2(from.x);
+
+    let mut ret = q1 - q2;
+
+    while ret < -PI {
+        ret += PI * 2.0;
+    }
+    while ret > PI {
+        ret -= PI * 2.0;
+    }
+
+    ret
+}
+
+pub fn direction_to_degrees(from: Vec2, to: Vec2) -> f32 {
+    let radian = direction_to_radian(from, to);
+    let mut degree = radian.to_degrees();
+
+    if (to.x - from.x) > 0.0 {
+        degree = -degree;
+    }
+
+    degree
 }
