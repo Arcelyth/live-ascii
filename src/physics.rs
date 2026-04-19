@@ -1,5 +1,9 @@
+use std::slice;
+
 use glam::Vec2;
 
+use crate::ffi::*;
+use crate::model::Model;
 use crate::physics::json::*;
 
 pub mod json;
@@ -267,6 +271,9 @@ pub struct Physics {
 }
 
 impl Physics {
+    const MAX_DELTA_TIME: f32 = 0.5;
+    const MOVEMENT_THRESHOLD: f32 = 0.01;
+    const AIR_RESISTANCE: f32 = 1.0;
     pub fn new(physics_rig: PhysicsRig) -> Self {
         Self {
             options: Options::new(),
@@ -418,6 +425,221 @@ impl Physics {
             fps,
         );
         Physics::new(rig)
+    }
+
+    pub fn evaluate(&mut self, model: &mut Model, delta_time: f32) {
+        if delta_time <= 0. {
+            return;
+        }
+        self.current_remain_time += delta_time;
+        if self.current_remain_time > Self::MAX_DELTA_TIME {
+            self.current_remain_time = 0.
+        }
+
+        let param_count = model.param_count;
+        let (para_vs, para_max_vs, para_min_vs, para_default_vs) = unsafe {
+            (
+                slice::from_raw_parts_mut(csmGetParameterValues(model.model), param_count),
+                slice::from_raw_parts(csmGetParameterMaximumValues(model.model), param_count),
+                slice::from_raw_parts(csmGetParameterMinimumValues(model.model), param_count),
+                slice::from_raw_parts(csmGetParameterDefaultValues(model.model), param_count),
+            )
+        };
+
+        if self.parameter_caches.len() < param_count {
+            self.parameter_caches.resize(param_count, 0.0);
+        }
+        if self.parameter_input_caches.len() < param_count {
+            let cur_len = self.parameter_input_caches.len();
+            self.parameter_input_caches.resize(param_count, 0.0);
+            for j in cur_len..param_count {
+                self.parameter_input_caches[j] = para_vs[j];
+            }
+        }
+
+        if self.current_rig_outputs.is_empty() {
+            for setting in &self.physics_rig.settings {
+                self.current_rig_outputs
+                    .push(vec![0.0; setting.output_count]);
+                self.previous_rig_outputs
+                    .push(vec![0.0; setting.output_count]);
+            }
+        }
+
+        let p_delta_time = if self.physics_rig.fps > 0 {
+            1.0 / (self.physics_rig.fps as f32)
+        } else {
+            delta_time
+        };
+
+        while self.current_remain_time >= p_delta_time {
+            // Copy current_rig_outputs to previous_rig_outputs
+            for setting_idx in 0..self.physics_rig.sub_rig_count {
+                let out_count = self.physics_rig.settings[setting_idx].output_count;
+                for i in 0..out_count {
+                    self.previous_rig_outputs[setting_idx][i] = self.current_rig_outputs[setting_idx][i];
+                }
+            }
+
+            let input_weight = p_delta_time / self.current_remain_time;
+            for j in 0..param_count {
+                self.parameter_caches[j] = self.parameter_input_caches[j] * (1.0 - input_weight) + para_vs[j] * input_weight;
+                self.parameter_input_caches[j] = self.parameter_caches[j];
+            }
+
+            for setting_idx in 0..self.physics_rig.sub_rig_count {
+                let setting = &self.physics_rig.settings[setting_idx];
+                let mut total_angle = 0.0f32;
+                let mut total_translation = Vec2::ZERO;
+
+                let input_start = setting.base_input_index;
+                let input_end = input_start + setting.input_count;
+                for input in &mut self.physics_rig.inputs[input_start..input_end] {
+                    let weight = input.weight / 100.0;
+
+                    if input.source_parameter_index == -1 {
+                        input.source_parameter_index = model.get_parameter_index(&input.source.id) as i32;
+                    }
+                    let src_idx = input.source_parameter_index as usize;
+
+                    (input.get_normalized_parameter_value)(
+                        &mut total_translation,
+                        &mut total_angle,
+                        self.parameter_caches[src_idx],
+                        para_min_vs[src_idx],
+                        para_max_vs[src_idx],
+                        para_default_vs[src_idx],
+                        &setting.normalization_position,
+                        &setting.normalization_angle,
+                        input.reflect,
+                        weight,
+                    );
+                }
+
+                let rad_angle = -total_angle.to_radians();
+                let (sin_a, cos_a) = rad_angle.sin_cos();
+
+                let rotated_translation = glam::Vec2::new(
+                    total_translation.x * cos_a - total_translation.y * sin_a,
+                    total_translation.x * sin_a + total_translation.y * cos_a,
+                );
+
+                let particle_start = setting.base_particle_index;
+                let particle_end = particle_start + setting.particle_count;
+                let particles_slice = &mut self.physics_rig.particles[particle_start..particle_end];
+
+                let threshold = Self::MOVEMENT_THRESHOLD * setting.normalization_position.maximum;
+
+                Self::update_particles(
+                    particles_slice,
+                    rotated_translation,
+                    total_angle,
+                    self.options.wind,
+                    threshold,
+                    p_delta_time,
+                    Self::AIR_RESISTANCE,
+                );
+
+                let output_start = setting.base_output_index;
+                let output_end = output_start + setting.output_count;
+                for (i, output) in self.physics_rig.outputs[output_start..output_end]
+                    .iter_mut()
+                    .enumerate()
+                {
+                    let p_idx = output.vertex_index as usize;
+
+                    if output.destination_parameter_index == -1 {
+                        output.destination_parameter_index = model.get_parameter_index(&output.destination.id) as i32;
+                    }
+
+                    if p_idx < 1 || p_idx >= setting.particle_count {
+                        continue;
+                    }
+
+                    let translation = particles_slice[p_idx].position - particles_slice[p_idx - 1].position;
+
+                    let output_value = (output.get_value)(
+                        translation,
+                        particles_slice,
+                        p_idx,
+                        output.reflect,
+                        self.options.gravity,
+                    );
+
+                    self.current_rig_outputs[setting_idx][i] = output_value;
+
+                    let dest_idx = output.destination_parameter_index as usize;
+
+                    Self::update_output_parameter_value(
+                        &mut self.parameter_caches[dest_idx],
+                        para_min_vs[dest_idx],
+                        para_max_vs[dest_idx],
+                        output_value,
+                        output,
+                    );
+                }
+            }
+
+            self.current_remain_time -= p_delta_time;
+        }
+
+        let alpha = self.current_remain_time / p_delta_time;
+        self.interpolate(model, alpha);
+    }
+
+    pub fn interpolate(&mut self, model: &mut Model, weight: f32) {
+        let param_count = model.param_count;
+        let (para_vs, para_max_vs, para_min_vs) = unsafe {
+            (
+                std::slice::from_raw_parts_mut(csmGetParameterValues(model.model), param_count),
+                std::slice::from_raw_parts(csmGetParameterMaximumValues(model.model), param_count),
+                std::slice::from_raw_parts(csmGetParameterMinimumValues(model.model), param_count),
+            )
+        };
+
+        for (setting_idx, setting) in self.physics_rig.settings.iter().enumerate() {
+            let start = setting.base_output_index;
+            let end = start + setting.output_count;
+
+            for (local_idx, output) in self.physics_rig.outputs[start..end].iter().enumerate() {
+                let dest_idx = output.destination_parameter_index;
+                if dest_idx == -1 {
+                    continue;
+                }
+
+                let dest_idx = dest_idx as usize;
+
+                let interpolated_value = self.previous_rig_outputs[setting_idx][local_idx] * (1.0 - weight) + self.current_rig_outputs[setting_idx][local_idx] * weight;
+
+                Self::update_output_parameter_value(
+                    &mut para_vs[dest_idx],
+                    para_min_vs[dest_idx],
+                    para_max_vs[dest_idx],
+                    interpolated_value,
+                    output,
+                );
+            }
+        }
+    }
+
+    pub fn update_output_parameter_value(
+        parameter_value: &mut f32,
+        paramter_value_minimum: f32,
+        parameter_value_maximum: f32,
+        translation: f32,
+        output: &PhysicsOutput,
+    ) {
+    }
+
+    pub fn update_particles(
+        strand: &mut [PhysicsParticle],
+        total_translation: Vec2,
+        total_angel: f32,
+        wind_direction: Vec2,
+        threshold_value: f32,
+        delta_time: f32,
+        air_resistance: f32,
+    ) {
     }
 }
 
