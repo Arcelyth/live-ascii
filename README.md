@@ -28,7 +28,9 @@ Note: *For face tracking, ensure [OpenSeeFace](https://github.com/emilianavt/Ope
 
 ## Operations and Debug
 Press `m` to choose the motion which you want to play. <br>
-Press `p` to show the debug panel. Press `1`-`5` to display different parameters in debug panel.
+Press `p` to show the debug panel. Press `1`-`6` to display different parameters in debug panel.
 
-
-
+## Features in future
+- Separate live2d framework to a crate
+- Support processes interaction
+- Complete handle `live.json` file for customizing actions
