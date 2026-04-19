@@ -275,6 +275,7 @@ impl Physics {
     const MAX_DELTA_TIME: f32 = 0.5;
     const MOVEMENT_THRESHOLD: f32 = 0.01;
     const AIR_RESISTANCE: f32 = 1.0;
+    const MAX_WEIGHT: f32 = 100.;
     pub fn new(physics_rig: PhysicsRig) -> Self {
         Self {
             options: Options::new(),
@@ -602,7 +603,7 @@ impl Physics {
             let start = setting.base_output_index;
             let end = start + setting.output_count;
 
-            for (local_idx, output) in self.physics_rig.outputs[start..end].iter().enumerate() {
+            for (local_idx, output) in self.physics_rig.outputs[start..end].iter_mut().enumerate() {
                 let dest_idx = output.destination_parameter_index;
                 if dest_idx == -1 {
                     continue;
@@ -624,12 +625,33 @@ impl Physics {
     }
 
     pub fn update_output_parameter_value(
-        parameter_value: &mut f32,
-        paramter_value_minimum: f32,
-        parameter_value_maximum: f32,
+        para_v: &mut f32,
+        para_v_min: f32,
+        para_v_max: f32,
         translation: f32,
-        output: &PhysicsOutput,
+        output: &mut PhysicsOutput,
     ) {
+        let output_scale = (output.get_scale)(output.translation_scale, output.angle_scale);
+        let mut value = translation * output_scale;
+        if value < para_v_min {
+            if value < output.value_below_minimum {
+                output.value_below_minimum = value;
+            }
+            value = para_v_min
+        } else if value > para_v_max {
+            if value > output.value_exceeded_maximum {
+                output.value_exceeded_maximum = value
+            }
+            value = para_v_max;
+        }
+
+        let weight = output.weight / Self::MAX_WEIGHT;
+        *para_v = if weight >= 1. {
+            value
+        } else {
+            *para_v*(1. - weight) + value*weight
+        }
+
     }
 
     pub fn update_particles(
