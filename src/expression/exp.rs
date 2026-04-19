@@ -37,7 +37,6 @@ impl ExpValue {
     }
 }
 
-#[derive(Debug)]
 pub struct ExpMotion {
     pub base: MotionBase,
     pub fade_weight: f32,

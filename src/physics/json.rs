@@ -23,6 +23,7 @@ pub struct PhysicsMeta {
     #[serde(rename = "TotalOutputCount")]
     pub output_count: usize,
     pub vertex_count: usize,
+    #[serde(default)]
     pub fps: usize,
     pub effective_forces: Force,
     #[serde(rename = "PhysicsDictionary")]

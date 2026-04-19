@@ -288,7 +288,7 @@ impl Physics {
         }
     }
 
-    pub fn from_json(&self, json: PhysicsJson) -> Self {
+    pub fn from_json(json: PhysicsJson) -> Self {
         let forces = json.meta.effective_forces;
         let gravity = Vec2::new(forces.gravity.x, forces.gravity.y);
         let wind = Vec2::new(forces.wind.x, forces.wind.y);
@@ -667,7 +667,7 @@ impl Physics {
         let total_radian = total_angel.to_radians();
         let current_gravity: Vec2 = total_radian.sin_cos().into();
         let current_gravity = current_gravity.normalize();
-        for i in 0..strand.len() {
+        for i in 1..strand.len() {
             strand[i].force = current_gravity * strand[i].acceleration + wind_direction;
             strand[i].last_position = strand[i].position;
             let delay = strand[i].delay * delta_time * 30.;

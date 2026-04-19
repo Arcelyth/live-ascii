@@ -32,6 +32,7 @@ use crate::motion::json::*;
 use crate::motion::manager::*;
 use crate::ui::*;
 use crate::utils::*;
+use crate::physics::*;
 
 pub struct Renderer {
     pub count: usize,
@@ -94,6 +95,7 @@ impl Renderer {
         model_setting: &mut ModelSetting,
         em: &mut ExpressionManager,
         pose: &mut Option<Pose>,
+        physics: &mut Option<Physics>,
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
@@ -303,6 +305,12 @@ impl Renderer {
             if let Some(pose) = pose {
                 pose.update_parameters(&mut self.model, delta_time);
             }
+
+            // physics
+            if let Some(p) = physics {
+                p.evaluate(&mut self.model, delta_time);
+            } 
+
             self.model.save_parameters();
 
             em.update_motion(&mut self.model, delta_time);

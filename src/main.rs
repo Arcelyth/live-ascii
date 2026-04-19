@@ -13,6 +13,7 @@ use live_ascii::live::json::*;
 use live_ascii::model_setting::ModelSetting;
 use live_ascii::motion::manager::*;
 use live_ascii::tracker::*;
+use live_ascii::physics::{Physics, json::*};
 
 use live_ascii::renderer::*;
 use live_ascii::utils::*;
@@ -82,7 +83,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     // initalize tracker
-    let mut tracker = Tracker::new();
+    let tracker = Tracker::new();
 
     // initialize terminal
     let mut context = Context::new(
@@ -117,12 +118,22 @@ fn main() -> Result<(), Box<dyn Error>> {
         None
     };
 
+    // physics
+    
+    let mut ph_file = if let Some(physics_file) = model_setting.get_physics_file_name() {
+        let p_json = PhysicsJson::from_path(base_dir.to_str().unwrap(), physics_file.to_str().unwrap())?;
+        Some(Physics::from_json(p_json))
+    } else {
+        None
+    };
+
     renderer.render(
         &mut context,
         &mut mm,
         &mut model_setting,
         &mut em,
         &mut pos,
+        &mut ph_file
     )?;
 
     Ok(())
