@@ -70,8 +70,8 @@ impl FaceController {
 
         let (pitch, yaw, roll) = final_quat.to_euler(EulerRot::XYZ);
 
-        let left_eye = packet.lms[36];
-        let right_eye = packet.lms[45];
+        let _left_eye = packet.lms[36];
+        let _right_eye = packet.lms[45];
 
         self.set_param_smoothed(model, "ParamAngleX", yaw * HEAD_X_GAIN);
         self.set_param_smoothed(model, "ParamAngleY", pitch * HEAD_Y_GAIN);

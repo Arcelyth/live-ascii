@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::error::Error;
-use std::fmt;
 use std::fs;
 use std::path::Path;
 
@@ -19,11 +18,17 @@ pub struct Live {
 pub enum HotkeyAction {
     #[serde(rename = "Set/UnSet Expression")]
     SetUnsetExpression,
+    #[serde(rename = "Open/Close Motion Panel")]
+    OpenCloseMotionPanel,
+    #[serde(rename = "Enable/Disable Physics")]
+    EnableDisablePhysics,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum Action {
     SetUnsetExpression(String),
+    OpenCloseMotionPanel,
+    EnableDisablePhysics,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -38,6 +43,7 @@ pub struct HotkeyTriggers {
 #[serde(rename_all = "PascalCase")]
 pub struct Hotkey {
     pub action: HotkeyAction,
+    #[serde(default)]
     pub file: String,
     pub triggers: HotkeyTriggers,
     #[serde(default = "default_fade_seconds")]
@@ -74,6 +80,16 @@ impl Hotkey {
                 let a = Action::SetUnsetExpression(self.file.clone());
                 if !action_queue.contains(&a) {
                     action_queue.push(a);
+                }
+            }
+            HotkeyAction::OpenCloseMotionPanel => {
+                if !action_queue.contains(&Action::OpenCloseMotionPanel) {
+                    action_queue.push(Action::OpenCloseMotionPanel)
+                }
+            }
+            HotkeyAction::EnableDisablePhysics => {
+                 if !action_queue.contains(&Action::EnableDisablePhysics) {
+                    action_queue.push(Action::EnableDisablePhysics )
                 }
             }
         }

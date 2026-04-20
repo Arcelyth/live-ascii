@@ -96,7 +96,7 @@ impl ExpMotion {
         model: &mut Model,
         _user_time_s: f32,
         weight: f32,
-        qe: &mut MotionQueueEntry,
+        _qe: &mut MotionQueueEntry,
     ) {
         for param in &self.params {
             match param.blend_type {

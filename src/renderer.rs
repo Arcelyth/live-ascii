@@ -136,26 +136,18 @@ impl Renderer {
                         match context.current_panel {
                             Panel::None => match code {
                                 KeyCode::Char('q') => break,
-                                KeyCode::Up => self.offset_y -= 0.1,
-                                KeyCode::Down => self.offset_y += 0.1,
-                                KeyCode::Left => self.offset_x -= 0.1,
-                                KeyCode::Right => self.offset_x += 0.1,
+                                KeyCode::Up => self.offset_y += 0.1,
+                                KeyCode::Down => self.offset_y -= 0.1,
+                                KeyCode::Left => self.offset_x += 0.1,
+                                KeyCode::Right => self.offset_x -= 0.1,
                                 KeyCode::Char('=') | KeyCode::Char('+') => self.scale *= 1.1,
                                 KeyCode::Char('-') => self.scale *= 0.9,
-                                KeyCode::Char('m') => {
-                                    context.current_panel = Panel::Op;
-                                    context.current_op_panel = OpPanel::Motions;
-                                }
                                 KeyCode::Char('p') => {
                                     context.current_panel = Panel::Debug;
                                     if let DebugPanel::None = context.current_debug_panel {
                                         context.current_debug_panel = DebugPanel::Parameters;
                                     }
                                 }
-                                KeyCode::Char('o') => {
-                                    context.use_physics = !context.use_physics;
-                                }
-
                                 _ => {}
                             },
                             Panel::Op => match context.current_op_panel {
@@ -177,10 +169,6 @@ impl Renderer {
                                         if let Some(p) = pose {
                                             p.reset(&mut self.model);
                                         }
-                                    }
-                                    KeyCode::Char('m') => {
-                                        context.current_panel = Panel::Op;
-                                        context.current_op_panel = OpPanel::Motions;
                                     }
                                     KeyCode::Char('p') => {
                                         context.current_panel = Panel::Debug;
@@ -242,10 +230,6 @@ impl Renderer {
 
                                         _ => context.param_list_state.select_next(),
                                     },
-                                    KeyCode::Char('m') => {
-                                        context.current_panel = Panel::Op;
-                                        context.current_op_panel = OpPanel::Motions;
-                                    }
                                     _ => {}
                                 },
                             },
@@ -275,6 +259,19 @@ impl Renderer {
                             }
                         }
                     }
+                    Action::OpenCloseMotionPanel => match context.current_panel {
+                        Panel::Op => {
+                            if let OpPanel::Motions = context.current_op_panel {
+                                context.current_op_panel = OpPanel::None;
+                                context.current_panel = Panel::None;
+                            }
+                        }
+                        _ => {
+                            context.current_op_panel = OpPanel::Motions;
+                            context.current_panel = Panel::Op;
+                        }
+                    },
+                    Action::EnableDisablePhysics => context.use_physics = !context.use_physics,
                 }
             }
 

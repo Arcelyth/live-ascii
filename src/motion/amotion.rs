@@ -493,7 +493,7 @@ pub fn correct_end_point(
     time: f32,
     end_time: f32,
 ) -> f32 {
-    let last_segment = &motion_data.segments[last_segment_index];
+    let _last_segment = &motion_data.segments[last_segment_index];
     let first_point = &motion_data.points[first_point_index];
     let last_point = &motion_data.points[last_point_index];
 
