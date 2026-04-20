@@ -6,11 +6,17 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph};
 
 use crate::context::*;
-use crate::model::Model;
 use crate::expression::manager::*;
+use crate::model::Model;
 use crate::motion::manager::*;
 
-pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionManager, em: &ExpressionManager) -> Result<(), Box<dyn Error>> {
+pub fn ui(
+    frame: &mut Frame,
+    context: &mut Context,
+    model: &Model,
+    mm: &MotionManager,
+    em: &ExpressionManager,
+) -> Result<(), Box<dyn Error>> {
     let model_text = context.buffer_to_text();
     let model_widget = Paragraph::new(model_text);
 
@@ -33,7 +39,13 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionMa
             } else {
                 motion_list_border_fg
             };
-            let list_area = Rect::new(2, 2, 36, 15);
+            let size = frame.area();
+            let list_area = Rect::new(
+                2.min(size.width),
+                2.min(size.height),
+                36.min(size.width.saturating_sub(2)),
+                15.min(size.height.saturating_sub(2)),
+            );
 
             let items: Vec<ListItem> = context
                 .model_setting
@@ -69,7 +81,14 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionMa
 
     match context.current_debug_panel {
         DebugPanel::Parameters => {
-            let list_area = Rect::new(2, 20, 45, 20);
+            let size = frame.area();
+            let list_area = Rect::new(
+                2.min(size.width),
+                20.min(size.height),
+                45.min(size.width.saturating_sub(2)),
+                20.min(size.height.saturating_sub(20)),
+            );
+
             let border_fg = if let Panel::Debug = context.current_panel {
                 selected_border
             } else {
@@ -105,7 +124,14 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionMa
             frame.render_stateful_widget(list_widget, list_area, &mut context.param_list_state);
         }
         DebugPanel::PartOpacities => {
-            let list_area = Rect::new(2, 20, 45, 20);
+            let size = frame.area();
+            let list_area = Rect::new(
+                2.min(size.width),
+                20.min(size.height),
+                45.min(size.width.saturating_sub(2)),
+                20.min(size.height.saturating_sub(20)),
+            );
+
             let border_fg = if let Panel::Debug = context.current_panel {
                 selected_border
             } else {
@@ -141,7 +167,14 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionMa
             frame.render_stateful_widget(list_widget, list_area, &mut context.param_list_state);
         }
         DebugPanel::AppliedExp => {
-            let list_area = Rect::new(2, 20, 45, 20);
+            let size = frame.area();
+            let list_area = Rect::new(
+                2.min(size.width),
+                20.min(size.height),
+                45.min(size.width.saturating_sub(2)),
+                20.min(size.height.saturating_sub(20)),
+            );
+
             let border_fg = if let Panel::Debug = context.current_panel {
                 selected_border
             } else {
@@ -178,7 +211,14 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionMa
         }
 
         DebugPanel::ActionQueue => {
-            let list_area = Rect::new(2, 20, 45, 20);
+            let size = frame.area();
+            let list_area = Rect::new(
+                2.min(size.width),
+                20.min(size.height),
+                45.min(size.width.saturating_sub(2)),
+                20.min(size.height.saturating_sub(20)),
+            );
+
             let border_fg = if let Panel::Debug = context.current_panel {
                 selected_border
             } else {
@@ -215,7 +255,13 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionMa
         }
 
         DebugPanel::Camera => {
-            let list_area = Rect::new(2, 20, 45, 30);
+            let size = frame.area();
+            let list_area = Rect::new(
+                2.min(size.width),
+                20.min(size.height),
+                45.min(size.width.saturating_sub(2)),
+                20.min(size.height.saturating_sub(20)),
+            );
             let border_fg = if let Panel::Debug = context.current_panel {
                 selected_border
             } else {
@@ -237,17 +283,21 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionMa
                         .title(" Tracker Data "),
                 )
                 .scroll((context.camera_offset, 0))
-                .style(
-                    Style::default()
-                        .fg(param_list_border_fg),
-                );
+                .style(Style::default().fg(param_list_border_fg));
 
             frame.render_widget(Clear, list_area);
             frame.render_widget(p_widget, list_area);
         }
 
         DebugPanel::Manager => {
-            let list_area = Rect::new(2, 20, 45, 30);
+            let size = frame.area();
+            let list_area = Rect::new(
+                2.min(size.width),
+                20.min(size.height),
+                45.min(size.width.saturating_sub(2)),
+                20.min(size.height.saturating_sub(20)),
+            );
+
             let border_fg = if let Panel::Debug = context.current_panel {
                 selected_border
             } else {
@@ -269,15 +319,11 @@ pub fn ui(frame: &mut Frame, context: &mut Context, model: &Model, mm: &MotionMa
                         .title(" Motion Manager and Expression Manager"),
                 )
                 .scroll((context.context_offset, 0))
-                .style(
-                    Style::default()
-                        .fg(param_list_border_fg),
-                );
+                .style(Style::default().fg(param_list_border_fg));
 
             frame.render_widget(Clear, list_area);
             frame.render_widget(p_widget, list_area);
         }
-
 
         _ => {}
     }
