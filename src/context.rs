@@ -68,6 +68,7 @@ pub struct Context {
 
     pub tracker: Tracker,
     pub camera: bool,
+    pub use_physics: bool,
 }
 
 impl Context {
@@ -91,6 +92,7 @@ impl Context {
             active_expressions: HashMap::new(),
             tracker,
             camera,
+            use_physics: false,
         }
     }
 

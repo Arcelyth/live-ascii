@@ -1,5 +1,5 @@
-use std::slice;
 use std::f32::consts::PI;
+use std::slice;
 
 use glam::Vec2;
 
@@ -294,10 +294,12 @@ impl Physics {
         let wind = Vec2::new(forces.wind.x, forces.wind.y);
         let sub_rig_count = json.meta.setting_count;
         let fps = json.meta.fps;
+
         let mut sub_rigs = vec![];
         let mut inputs = vec![];
         let mut outputs = vec![];
         let mut particles = vec![];
+
         for setting in json.settings {
             let setting_pos = setting.normalization.position;
             let setting_angle = setting.normalization.angle;
@@ -311,6 +313,14 @@ impl Physics {
                 setting_angle.maximum,
                 setting_angle.default,
             );
+
+            let base_input_index = inputs.len();
+            let base_output_index = outputs.len();
+            let base_particle_index = particles.len();
+
+            let input_count = setting.input.len();
+            let output_count = setting.output.len();
+            let particle_count = setting.vertices.len();
 
             // Inputs
             for input in setting.input {
@@ -331,9 +341,7 @@ impl Physics {
                         PhysicsSource::Angle,
                         get_input_angle_from_normalized as NormalizedPhysicsParameterValueGetter,
                     ),
-                    _ => {
-                        panic!("Unknown physics input type: {}", input.kind);
-                    }
+                    _ => panic!("Unknown physics input type: {}", input.kind),
                 };
                 let source = PhysicsParameter {
                     target_type: PhysicsTargetType::Parameter,
@@ -376,9 +384,7 @@ impl Physics {
                         get_output_angle as PhysicsValueGetter,
                         get_output_scale_angle as PhysicsScaleGetter,
                     ),
-                    _ => {
-                        panic!("Unknown physics output type: {}", output.kind);
-                    }
+                    _ => panic!("Unknown physics output type: {}", output.kind),
                 };
                 let p_output = PhysicsOutput::new(
                     dest,
@@ -397,25 +403,24 @@ impl Physics {
             // Particles
             for v in setting.vertices {
                 let pos = Vec2::new(v.position.x, v.position.y);
-
                 let particle =
                     PhysicsParticle::new(v.mobility, v.delay, v.acceleration, v.radius, pos);
-
                 particles.push(particle);
             }
 
             let sub_rig = PhysicsSubRig::new(
-                inputs.len(),
-                outputs.len(),
-                particles.len(),
-                0,
-                0,
-                0,
+                input_count,
+                output_count,
+                particle_count,
+                base_input_index,
+                base_output_index,
+                base_particle_index,
                 norm_pos,
                 norm_angle,
             );
             sub_rigs.push(sub_rig);
         }
+
         let rig = PhysicsRig::new(
             sub_rig_count,
             sub_rigs,
@@ -426,6 +431,7 @@ impl Physics {
             wind,
             fps,
         );
+
         Physics::new(rig)
     }
 
@@ -479,13 +485,15 @@ impl Physics {
             for setting_idx in 0..self.physics_rig.sub_rig_count {
                 let out_count = self.physics_rig.settings[setting_idx].output_count;
                 for i in 0..out_count {
-                    self.previous_rig_outputs[setting_idx][i] = self.current_rig_outputs[setting_idx][i];
+                    self.previous_rig_outputs[setting_idx][i] =
+                        self.current_rig_outputs[setting_idx][i];
                 }
             }
 
             let input_weight = p_delta_time / self.current_remain_time;
             for j in 0..param_count {
-                self.parameter_caches[j] = self.parameter_input_caches[j] * (1.0 - input_weight) + para_vs[j] * input_weight;
+                self.parameter_caches[j] = self.parameter_input_caches[j] * (1.0 - input_weight)
+                    + para_vs[j] * input_weight;
                 self.parameter_input_caches[j] = self.parameter_caches[j];
             }
 
@@ -500,7 +508,8 @@ impl Physics {
                     let weight = input.weight / 100.0;
 
                     if input.source_parameter_index == -1 {
-                        input.source_parameter_index = model.get_parameter_index(&input.source.id) as i32;
+                        input.source_parameter_index =
+                            model.get_parameter_index(&input.source.id) as i32;
                     }
                     let src_idx = input.source_parameter_index as usize;
 
@@ -529,7 +538,6 @@ impl Physics {
                 let particle_start = setting.base_particle_index;
                 let particle_end = particle_start + setting.particle_count;
                 let particles_slice = &mut self.physics_rig.particles[particle_start..particle_end];
-
                 let threshold = Self::MOVEMENT_THRESHOLD * setting.normalization_position.maximum;
 
                 Self::update_particles(
@@ -549,17 +557,17 @@ impl Physics {
                     .enumerate()
                 {
                     let p_idx = output.vertex_index as usize;
-
                     if output.destination_parameter_index == -1 {
-                        output.destination_parameter_index = model.get_parameter_index(&output.destination.id) as i32;
+                        output.destination_parameter_index =
+                            model.get_parameter_index(&output.destination.id) as i32;
                     }
 
                     if p_idx < 1 || p_idx >= setting.particle_count {
                         continue;
                     }
 
-                    let translation = particles_slice[p_idx].position - particles_slice[p_idx - 1].position;
-
+                    let translation =
+                        particles_slice[p_idx].position - particles_slice[p_idx - 1].position;
                     let output_value = (output.get_value)(
                         translation,
                         particles_slice,
@@ -611,7 +619,9 @@ impl Physics {
 
                 let dest_idx = dest_idx as usize;
 
-                let interpolated_value = self.previous_rig_outputs[setting_idx][local_idx] * (1.0 - weight) + self.current_rig_outputs[setting_idx][local_idx] * weight;
+                let interpolated_value = self.previous_rig_outputs[setting_idx][local_idx]
+                    * (1.0 - weight)
+                    + self.current_rig_outputs[setting_idx][local_idx] * weight;
 
                 Self::update_output_parameter_value(
                     &mut para_vs[dest_idx],
@@ -649,9 +659,8 @@ impl Physics {
         *para_v = if weight >= 1. {
             value
         } else {
-            *para_v*(1. - weight) + value*weight
+            *para_v * (1. - weight) + value * weight
         }
-
     }
 
     pub fn update_particles(
@@ -671,29 +680,28 @@ impl Physics {
             strand[i].force = current_gravity * strand[i].acceleration + wind_direction;
             strand[i].last_position = strand[i].position;
             let delay = strand[i].delay * delta_time * 30.;
-            let mut direction = strand[i].position - strand[i-1].position;
-            let radian = direction_to_radian(strand[i].last_gravity, current_gravity) / air_resistance; 
+            let mut direction = strand[i].position - strand[i - 1].position;
+            let radian =
+                direction_to_radian(strand[i].last_gravity, current_gravity) / air_resistance;
 
             let rotation = Vec2::from_angle(radian);
             direction = Vec2::new(
                 direction.x * rotation.x - direction.y * rotation.y,
                 direction.x * rotation.y + direction.y * rotation.x,
             );
-            strand[i].position = strand[i-1].position + direction;
-            let velocity = Vec2::new(
-                strand[i].velocity.x * delay,
-                strand[i].velocity.y * delay
-            );
+            strand[i].position = strand[i - 1].position + direction;
+            let velocity = Vec2::new(strand[i].velocity.x * delay, strand[i].velocity.y * delay);
             let force = strand[i].force * delay * delay;
             strand[i].position = strand[i].position + velocity + force;
             let mut new_direction = strand[i].position - strand[i - 1].position;
             new_direction = new_direction.normalize();
-            strand[i].position = strand[i-1].position + new_direction * strand[i].radius;
+            strand[i].position = strand[i - 1].position + new_direction * strand[i].radius;
             if strand[i].position.x.abs() < threshold_value {
                 strand[i].position.x = 0.;
             }
             if delay != 0. {
-                strand[i].velocity = (strand[i].position - strand[i].last_position) / delay * strand[i].mobility;
+                strand[i].velocity =
+                    (strand[i].position - strand[i].last_position) / delay * strand[i].mobility;
             }
             strand[i].force = Vec2::ZERO;
             strand[i].last_gravity = current_gravity;
@@ -872,7 +880,7 @@ pub fn get_output_scale_angle(_translation_scale: Vec2, angle_scale: f32) -> f32
     angle_scale
 }
 
-// math 
+// math
 
 pub fn direction_to_radian(from: Vec2, to: Vec2) -> f32 {
     let q1 = to.y.atan2(to.x);

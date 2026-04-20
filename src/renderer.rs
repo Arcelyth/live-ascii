@@ -8,9 +8,7 @@ use std::time::Instant;
 
 use crossterm::{
     cursor,
-    event::{
-        self, Event, KeyCode, KeyEvent, KeyEventKind
-    },
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     execute,
     terminal::{self},
 };
@@ -30,9 +28,9 @@ use crate::model_setting::ModelSetting;
 use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
+use crate::physics::*;
 use crate::ui::*;
 use crate::utils::*;
-use crate::physics::*;
 
 pub struct Renderer {
     pub count: usize,
@@ -153,6 +151,9 @@ impl Renderer {
                                     if let DebugPanel::None = context.current_debug_panel {
                                         context.current_debug_panel = DebugPanel::Parameters;
                                     }
+                                }
+                                KeyCode::Char('o') => {
+                                    context.use_physics = !context.use_physics;
                                 }
 
                                 _ => {}
@@ -306,12 +307,13 @@ impl Renderer {
                 pose.update_parameters(&mut self.model, delta_time);
             }
 
-            // physics
-            if let Some(p) = physics {
-                p.evaluate(&mut self.model, delta_time);
-            } 
-
             self.model.save_parameters();
+            // physics
+            if let Some(p) = physics
+                && context.use_physics
+            {
+                p.evaluate(&mut self.model, delta_time);
+            }
 
             em.update_motion(&mut self.model, delta_time);
 
