@@ -24,6 +24,8 @@ pub enum HotkeyAction {
     OpenCloseDebugPanel,
     #[serde(rename = "Enable/Disable Physics")]
     EnableDisablePhysics,
+    #[serde(rename = "Open/Close Camera")]
+    OpenCloseCamera,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -32,6 +34,7 @@ pub enum Action {
     OpenCloseMotionPanel,
     OpenCloseDebugPanel,
     EnableDisablePhysics,
+    OpenCloseCamera,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -98,6 +101,11 @@ impl Hotkey {
             HotkeyAction::EnableDisablePhysics => {
                 if !action_queue.contains(&Action::EnableDisablePhysics) {
                     action_queue.push(Action::EnableDisablePhysics)
+                }
+            }
+            HotkeyAction::OpenCloseCamera => {
+                if !action_queue.contains(&Action::OpenCloseCamera) {
+                    action_queue.push(Action::OpenCloseCamera)
                 }
             }
         }

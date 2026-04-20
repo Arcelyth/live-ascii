@@ -115,10 +115,6 @@ impl Renderer {
 
         let mut face_controller = FaceController::new(0.3);
 
-        if context.camera {
-            context.tracker.run()?;
-        }
-
         loop {
             let frame_start = Instant::now();
 
@@ -283,6 +279,28 @@ impl Renderer {
                             ));
                         } else {
                             let text = "Disable physical effects";
+                            context.popups.push(Popup::new(
+                                text,
+                                Duration::from_secs(3),
+                                (text.len() + 3, 3),
+                                Color::Rgb(235, 129, 129),
+                            ));
+                        }
+                    }
+                    Action::OpenCloseCamera => {
+                        context.camera = !context.camera;
+                        if context.camera {
+                            let text = "Start facetracking";
+                            context.popups.push(Popup::new(
+                                text,
+                                Duration::from_secs(3),
+                                (text.len() + 3, 3),
+                                Color::Rgb(118, 232, 165),
+                            ));
+
+                            context.tracker.run()?;
+                        } else {
+                            let text = "Stop facetraking";
                             context.popups.push(Popup::new(
                                 text,
                                 Duration::from_secs(3),
