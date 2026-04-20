@@ -20,6 +20,8 @@ pub enum HotkeyAction {
     SetUnsetExpression,
     #[serde(rename = "Open/Close Motion Panel")]
     OpenCloseMotionPanel,
+    #[serde(rename = "Open/Close Debug Panel")]
+    OpenCloseDebugPanel,
     #[serde(rename = "Enable/Disable Physics")]
     EnableDisablePhysics,
 }
@@ -28,6 +30,7 @@ pub enum HotkeyAction {
 pub enum Action {
     SetUnsetExpression(String),
     OpenCloseMotionPanel,
+    OpenCloseDebugPanel,
     EnableDisablePhysics,
 }
 
@@ -87,9 +90,14 @@ impl Hotkey {
                     action_queue.push(Action::OpenCloseMotionPanel)
                 }
             }
+            HotkeyAction::OpenCloseDebugPanel => {
+                if !action_queue.contains(&Action::OpenCloseDebugPanel) {
+                    action_queue.push(Action::OpenCloseDebugPanel)
+                }
+            }
             HotkeyAction::EnableDisablePhysics => {
-                 if !action_queue.contains(&Action::EnableDisablePhysics) {
-                    action_queue.push(Action::EnableDisablePhysics )
+                if !action_queue.contains(&Action::EnableDisablePhysics) {
+                    action_queue.push(Action::EnableDisablePhysics)
                 }
             }
         }

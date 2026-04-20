@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::error::Error;
 use std::io::stdout;
 use std::sync::Arc;
@@ -17,6 +16,7 @@ use ratatui::text::{Line, Span, Text};
 use crate::live::json::*;
 use crate::tracker::*;
 use crate::model_setting::ModelSetting;
+use crate::ui::popup::*;
 
 #[derive(Debug)]
 pub enum OpPanel {
@@ -69,6 +69,7 @@ pub struct Context {
     pub tracker: Tracker,
     pub camera: bool,
     pub use_physics: bool,
+    pub popups: Popups,
 }
 
 impl Context {
@@ -93,6 +94,7 @@ impl Context {
             tracker,
             camera,
             use_physics: false,
+            popups: Popups::new(),
         }
     }
 

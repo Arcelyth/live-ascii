@@ -1,0 +1,60 @@
+use ratatui::style::Color;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+#[derive(Debug)]
+pub struct Popup {
+    pub content: Arc<str>,
+    pub duration: Duration,
+    pub created_at: Instant,
+    pub position: Option<(usize, usize)>,
+    pub size: (usize, usize),
+    pub color: Color,
+}
+
+impl Popup {
+    pub fn new(
+        content: impl Into<Arc<str>>,
+        duration: Duration,
+        size: (usize, usize),
+        color: Color,
+    ) -> Self {
+        Self {
+            content: content.into(),
+            duration,
+            created_at: Instant::now(),
+            position: None,
+            size,
+            color,
+        }
+    }
+
+    pub fn with_position(mut self, pos: (usize, usize)) -> Self {
+        self.position = Some(pos);
+        self
+    }
+
+    pub fn is_expired(&self) -> bool {
+        self.created_at.elapsed() >= self.duration
+    }
+}
+
+#[derive(Debug)]
+pub struct Popups {
+    pub inner: Vec<Popup>,
+}
+
+impl Popups {
+    pub fn new() -> Self {
+        Self { inner: Vec::new() }
+    }
+
+    pub fn push(&mut self, popup: Popup) {
+        self.inner.push(popup);
+    }
+
+    pub fn update(&mut self) {
+        self.inner.retain(|p| !p.is_expired());
+    }
+}
+

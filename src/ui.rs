@@ -9,6 +9,9 @@ use crate::context::*;
 use crate::expression::manager::*;
 use crate::model::Model;
 use crate::motion::manager::*;
+use crate::ui::popup::*;
+
+pub mod popup;
 
 pub fn ui(
     frame: &mut Frame,
@@ -328,5 +331,36 @@ pub fn ui(
         _ => {}
     }
 
+    render_popups(&context.popups, frame);
+
     Ok(())
+}
+
+pub fn render_popups(popups: &Popups, frame: &mut Frame) {
+    let area = frame.area();
+
+    let mut offset_y = 0;
+
+    for popup in &popups.inner {
+        let (w, h) = popup.size;
+
+        let rect = if let Some((x, y)) = popup.position {
+            Rect::new(x as u16, y as u16, w as u16, h as u16)
+        } else {
+            let x = area.width.saturating_sub(w as u16);
+            let y = offset_y as u16;
+
+            offset_y += h;
+
+            Rect::new(x, y, w as u16, h as u16)
+        };
+
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default().fg(popup.color));
+
+        let paragraph = Paragraph::new(popup.content.to_string()).block(block);
+
+        frame.render_widget(paragraph, rect);
+    }
 }

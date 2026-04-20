@@ -2,7 +2,7 @@
 
 use std::error::Error;
 use std::ffi::CStr;
-use std::io::{Write, stdout};
+use std::io::stdout;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -13,6 +13,7 @@ use crossterm::{
     terminal::{self},
 };
 use image::{DynamicImage, GenericImageView};
+use ratatui::style::Color;
 use ratatui::{Terminal, backend::CrosstermBackend};
 
 use crate::context::*;
@@ -29,7 +30,7 @@ use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
 use crate::physics::*;
-use crate::ui::*;
+use crate::ui::{popup::*, *};
 use crate::utils::*;
 
 pub struct Renderer {
@@ -142,12 +143,6 @@ impl Renderer {
                                 KeyCode::Right => self.offset_x -= 0.1,
                                 KeyCode::Char('=') | KeyCode::Char('+') => self.scale *= 1.1,
                                 KeyCode::Char('-') => self.scale *= 0.9,
-                                KeyCode::Char('p') => {
-                                    context.current_panel = Panel::Debug;
-                                    if let DebugPanel::None = context.current_debug_panel {
-                                        context.current_debug_panel = DebugPanel::Parameters;
-                                    }
-                                }
                                 _ => {}
                             },
                             Panel::Op => match context.current_op_panel {
@@ -168,12 +163,6 @@ impl Renderer {
                                         }
                                         if let Some(p) = pose {
                                             p.reset(&mut self.model);
-                                        }
-                                    }
-                                    KeyCode::Char('p') => {
-                                        context.current_panel = Panel::Debug;
-                                        if let DebugPanel::None = context.current_debug_panel {
-                                            context.current_debug_panel = DebugPanel::Parameters;
                                         }
                                     }
                                     _ => {}
@@ -271,7 +260,37 @@ impl Renderer {
                             context.current_panel = Panel::Op;
                         }
                     },
-                    Action::EnableDisablePhysics => context.use_physics = !context.use_physics,
+                    Action::OpenCloseDebugPanel => match context.current_panel {
+                        Panel::Debug => {
+                            context.current_debug_panel = DebugPanel::None;
+                            context.current_panel = Panel::None;
+                        }
+                        _ => {
+                            context.current_debug_panel = DebugPanel::Parameters;
+                            context.current_panel = Panel::Debug;
+                        }
+                    },
+                    Action::EnableDisablePhysics => {
+                        context.use_physics = !context.use_physics;
+
+                        if context.use_physics {
+                            let text = "Enable physical effects";
+                            context.popups.push(Popup::new(
+                                text,
+                                Duration::from_secs(3),
+                                (text.len() + 3, 3),
+                                Color::Rgb(118, 232, 165),
+                            ));
+                        } else {
+                            let text = "Disable physical effects";
+                            context.popups.push(Popup::new(
+                                text,
+                                Duration::from_secs(3),
+                                (text.len() + 3, 3),
+                                Color::Rgb(235, 129, 129),
+                            ));
+                        }
+                    }
                 }
             }
 
@@ -534,6 +553,8 @@ impl Renderer {
                 }
             })?;
 
+            // check popups
+            context.popups.update();
             let elapsed = frame_start.elapsed();
             if elapsed < target_frame_time {
                 std::thread::sleep(target_frame_time - elapsed);
