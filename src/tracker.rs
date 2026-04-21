@@ -2,7 +2,10 @@ use std::{
     error::Error,
     io::Cursor,
     net::UdpSocket,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
     thread,
 };
 
@@ -131,16 +134,22 @@ fn parse_packet(buf: &[u8]) -> Option<Packet> {
 #[derive(Debug)]
 pub struct Tracker {
     latest: Arc<Mutex<Option<Packet>>>,
+    is_running: Arc<AtomicBool>,
 }
 
 impl Tracker {
     pub fn new() -> Self {
         Self {
             latest: Arc::new(Mutex::new(None)),
+            is_running: Arc::new(AtomicBool::new(false)),
         }
     }
 
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
+        if self.is_running.load(Ordering::SeqCst) {
+            return Ok(());
+        } 
+        self.is_running.store(true, Ordering::SeqCst);
         let socket = UdpSocket::bind("127.0.0.1:11573")?;
         let latest_thread = Arc::clone(&self.latest);
 
@@ -166,5 +175,8 @@ impl Tracker {
     pub fn latest(&self) -> Option<Packet> {
         self.latest.lock().ok().and_then(|g| g.clone())
     }
-}
 
+    pub fn stop(&self) {
+        self.is_running.store(false, Ordering::SeqCst);
+    }
+}
