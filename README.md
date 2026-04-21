@@ -25,6 +25,8 @@ cargo run --release -- ./path/to/model.model3.json --camera
 ```
 
 Note: *For face tracking, ensure [OpenSeeFace](https://github.com/emilianavt/OpenSeeFace) is running and sending data to the default UDP port (11573).*
+## Basic Operations
+The arrow keys are used for moving the camera, and the `+` `-` keys are used for zooming in and out.
 
 ## Interactions
 
