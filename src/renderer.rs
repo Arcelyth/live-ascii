@@ -29,8 +29,8 @@ use crate::model_setting::ModelSetting;
 use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
-use crate::shader::*;
 use crate::physics::*;
+use crate::shader::*;
 use crate::ui::{popup::*, *};
 use crate::utils::*;
 
@@ -102,7 +102,7 @@ impl Renderer {
         // terminal
         let backend = CrosstermBackend::new(stdout());
         let mut terminal = Terminal::new(backend)?;
-        let shader = self.shader_manager.current_shader();
+        let mut shader = self.shader_manager.current_shader();
         let fps = 60.0;
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
         let mut last_frame = Instant::now();
@@ -308,6 +308,17 @@ impl Renderer {
                                 Color::Rgb(235, 129, 129),
                             ));
                         }
+                    }
+                    Action::NextShader => {
+                        self.shader_manager.next();
+                        shader = self.shader_manager.current_shader();
+                        let text = "Switch to next shader";
+                        context.popups.push(Popup::new(
+                            text,
+                            Duration::from_secs(3),
+                            (text.len() + 3, 3),
+                            Color::Rgb(144, 220, 222),
+                        ));
                     }
                 }
             }

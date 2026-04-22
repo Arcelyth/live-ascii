@@ -7,7 +7,8 @@ impl ShaderManager {
     pub fn new() -> Self {
         let shaders: Vec<Box<[char]>> = vec![
             Box::new([' ', '.', ':', '-', '=', '+', '*', '#', '%', '@']),
-            Box::new(['⠀', '⠁', '⠃', '⠇', '⠧', '⠷', '⠿', '⡿', '⣿'])
+            Box::new(['⠀', '⠁', '⠃', '⠇', '⠧', '⠷', '⠿', '⡿', '⣿']),
+            Box::new([' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'])
         ];
         Self {
             shaders,
@@ -18,4 +19,9 @@ impl ShaderManager {
     pub fn current_shader(&self) -> &Box<[char]> {
         &self.shaders[self.idx]
     }
-}
+
+    pub fn next(&mut self) {
+        self.idx += 1;
+        self.idx %= self.shaders.len();
+    } 
+} 

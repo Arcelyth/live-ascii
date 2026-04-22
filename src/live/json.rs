@@ -26,6 +26,8 @@ pub enum HotkeyAction {
     EnableDisablePhysics,
     #[serde(rename = "Open/Close Camera")]
     OpenCloseCamera,
+    #[serde(rename = "Next Shader")]
+    NextShader
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -35,6 +37,7 @@ pub enum Action {
     OpenCloseDebugPanel,
     EnableDisablePhysics,
     OpenCloseCamera,
+    NextShader
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -106,6 +109,11 @@ impl Hotkey {
             HotkeyAction::OpenCloseCamera => {
                 if !action_queue.contains(&Action::OpenCloseCamera) {
                     action_queue.push(Action::OpenCloseCamera)
+                }
+            }
+            HotkeyAction::NextShader => {
+                if !action_queue.contains(&Action::NextShader) {
+                    action_queue.push(Action::NextShader)
                 }
             }
         }
