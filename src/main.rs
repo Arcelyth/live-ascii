@@ -28,8 +28,6 @@ struct Args {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let chars_10 = vec![' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'];
-
     let args = Args::parse();
     // load model setting
     let mut model_setting = ModelSetting::new(&args.model_setting)?;
@@ -104,7 +102,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut mm = MotionManager::new();
 
     // initialize renderer
-    let mut renderer = Renderer::new(model_ptr, textures, Box::new(chars_10).into_boxed_slice());
+    let mut renderer = Renderer::new(model_ptr, textures);
 
     // initialize expression
     let mut em = ExpressionManager::new();

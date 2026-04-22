@@ -29,6 +29,7 @@ use crate::model_setting::ModelSetting;
 use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
+use crate::shader::*;
 use crate::physics::*;
 use crate::ui::{popup::*, *};
 use crate::utils::*;
@@ -45,7 +46,7 @@ pub struct Renderer {
     indices: *const *const u16,
     multiply_colors: *const CsmVector4,
     screen_colors: *const CsmVector4,
-    shader: Box<[char]>,
+    shader_manager: ShaderManager,
 
     mask_counts: *const i32,
     masks: *const *const i32,
@@ -58,7 +59,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(model_ptr: *mut CsmModel, textures: Vec<DynamicImage>, shader: Box<[char]>) -> Self {
+    pub fn new(model_ptr: *mut CsmModel, textures: Vec<DynamicImage>) -> Self {
         let model = Model::new(model_ptr);
         unsafe {
             Self {
@@ -73,7 +74,7 @@ impl Renderer {
                 indices: csmGetDrawableIndices(model_ptr),
                 multiply_colors: csmGetDrawableMultiplyColors(model_ptr),
                 screen_colors: csmGetDrawableScreenColors(model_ptr),
-                shader,
+                shader_manager: ShaderManager::new(),
 
                 mask_counts: csmGetDrawableMaskCounts(model_ptr),
                 masks: csmGetDrawableMasks(model_ptr),
@@ -98,11 +99,10 @@ impl Renderer {
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
         execute!(stdout(), cursor::Hide)?;
-
         // terminal
         let backend = CrosstermBackend::new(stdout());
         let mut terminal = Terminal::new(backend)?;
-
+        let shader = self.shader_manager.current_shader();
         let fps = 60.0;
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
         let mut last_frame = Instant::now();
@@ -545,12 +545,12 @@ impl Renderer {
                                                     + 0.114 * (b as f32);
 
                                                 let char_index = (luminance / 255.0
-                                                    * (self.shader.len() - 1) as f32)
+                                                    * (shader.len() - 1) as f32)
                                                     .round()
                                                     as usize;
                                                 let char_index =
-                                                    char_index.clamp(0, self.shader.len() - 1);
-                                                let display_char = self.shader[char_index];
+                                                    char_index.clamp(0, shader.len() - 1);
+                                                let display_char = shader[char_index];
 
                                                 context.set_pixel(x, y, display_char, (r, g, b));
                                             }
