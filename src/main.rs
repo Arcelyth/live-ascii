@@ -93,9 +93,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     // load live json
-    let live = Live::from_path(base_dir.to_str().unwrap(), &format!("{}.live.json", name));
-    if let Ok(live) = live {
-        context.set_live_setting(live);
+    let full_path = Path::new(base_dir).join(&format!("{}.live.json", name));
+    if let Ok(data) = fs::read_to_string(&full_path) {
+        if let Ok(live) = Live::from_data(data) {
+            context.set_live_setting(live);
+        } else {
+            panic!("Error: The parameters or format of {:?} has error.", full_path);
+        }
     }
 
     // initialize motion manager

@@ -27,7 +27,7 @@ pub enum HotkeyAction {
     #[serde(rename = "Open/Close Camera")]
     OpenCloseCamera,
     #[serde(rename = "Next Shader")]
-    NextShader
+    NextShader,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -37,7 +37,7 @@ pub enum Action {
     OpenCloseDebugPanel,
     EnableDisablePhysics,
     OpenCloseCamera,
-    NextShader
+    NextShader,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -137,6 +137,11 @@ impl Live {
         let live: Live = serde_json::from_str(&data)
             .map_err(|e| format!("Failed to parse JSON ({:?}): {}", full_path, e))?;
 
+        Ok(live)
+    }
+
+    pub fn from_data(data: String) -> Result<Self, Box<dyn Error>> {
+        let live: Live = serde_json::from_str(&data)?;
         Ok(live)
     }
 
