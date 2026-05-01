@@ -152,10 +152,17 @@ impl Renderer {
                                     KeyCode::Enter => {
                                         if let Some(idx) = context.motion_list_state.selected() {
                                             let file = model_setting.get_all_motion_names()[idx];
-                                            let motion_data =
-                                                MotionData::from_path(&context.base_dir, file)?;
-                                            let motion = CubismMotion::new(motion_data);
-                                            mm.start_motion_priority(motion, true, 0);
+                                            if let Ok(motion_data) =
+                                                MotionData::from_path(&context.base_dir, file)
+                                            {
+                                                let motion = CubismMotion::new(motion_data);
+                                                mm.start_motion_priority(motion, true, 0);
+                                            } else {
+                                                context.popups.push_err(&format!(
+                                                    "Failed to parse: {}",
+                                                    file
+                                                ));
+                                            }
                                         }
                                         if let Some(p) = pose {
                                             p.reset(&mut self.model);
@@ -241,6 +248,10 @@ impl Renderer {
                             if let Ok(exp) = ExpMotion::from_path(&context.base_dir, file) {
                                 let new_id = em.qm.start_motion(exp, false);
                                 context.active_expressions.insert(file.clone(), new_id);
+                            } else {
+                                context
+                                    .popups
+                                    .push_err(&format!("Failed to parse: {}", file));
                             }
                         }
                     }
@@ -298,7 +309,9 @@ impl Renderer {
                                 Color::Rgb(118, 232, 165),
                             ));
 
-                            context.tracker.run()?;
+                            context.tracker.run().unwrap_or_else(|_| {
+                                context.popups.push_err("Failed to run tracker.")
+                            });
                         } else {
                             let text = "Stop facetraking";
                             context.popups.push(Popup::new(

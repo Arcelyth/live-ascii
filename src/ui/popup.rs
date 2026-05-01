@@ -56,5 +56,13 @@ impl Popups {
     pub fn update(&mut self) {
         self.inner.retain(|p| !p.is_expired());
     }
-}
 
+    pub fn push_err(&mut self, text: &str) {
+        self.inner.push(Popup::new(
+            text,
+            Duration::from_secs(3),
+            (text.len() + 3, 3),
+            Color::Rgb(230, 119, 119),
+        ));
+    }
+}
