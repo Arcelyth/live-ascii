@@ -634,6 +634,11 @@ impl Renderer {
                 }
             })?;
 
+            // handle receive
+            while let Ok(msg) = context.msg_chan.1.try_recv() {
+                context.popups.push_msg(&msg);
+            }
+
             // check popups
             context.popups.update();
             let elapsed = frame_start.elapsed();
