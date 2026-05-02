@@ -65,4 +65,14 @@ impl Popups {
             Color::Rgb(230, 119, 119),
         ));
     }
+
+    pub fn push_msg(&mut self, text: &str) {
+        self.inner.push(Popup::new(
+            text,
+            Duration::from_secs(4),
+            (text.len() + 3, 3),
+            Color::Rgb(128, 242, 176),
+        ));
+    }
+
 }

@@ -28,6 +28,8 @@ pub enum HotkeyAction {
     OpenCloseCamera,
     #[serde(rename = "Next Shader")]
     NextShader,
+    #[serde(rename = "Open/Close Receiver")]
+    OpenCloseReceiver,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -38,6 +40,7 @@ pub enum Action {
     EnableDisablePhysics,
     OpenCloseCamera,
     NextShader,
+    OpenCloseReceiver(Option<usize>),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -61,6 +64,7 @@ pub struct Hotkey {
     pub stop_after_seconds: f32,
     #[serde(default)]
     pub stop_when_release_key: bool,
+    pub port: Option<usize>,
 }
 
 impl Hotkey {
@@ -114,6 +118,11 @@ impl Hotkey {
             HotkeyAction::NextShader => {
                 if !action_queue.contains(&Action::NextShader) {
                     action_queue.push(Action::NextShader)
+                }
+            }
+            HotkeyAction::OpenCloseReceiver => {
+                if !action_queue.contains(&Action::OpenCloseReceiver(self.port)) {
+                    action_queue.push(Action::OpenCloseReceiver(self.port))
                 }
             }
         }
@@ -188,6 +197,7 @@ mod tests {
                 fade_seconds: 0.5,
                 stop_after_seconds: 3.,
                 stop_when_release_key: false,
+                port: None,
             }],
         };
         assert_eq!(live, expected);

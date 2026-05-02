@@ -53,16 +53,19 @@ impl ExpMotion {
             .map_err(|e| format!("Failed to parse JSON ({:?}): {}", full_path, e))?;
 
         let mut base = MotionBase::new();
-        base.fade_in_seconds = if exp3.fade_in_time <= 0.0 {
-            1.0
-        } else {
-            exp3.fade_in_time
-        };
-        base.fade_out_seconds = if exp3.fade_out_time <= 0.0 {
-            1.0
-        } else {
-            exp3.fade_out_time
-        };
+//        base.fade_in_seconds = if exp3.fade_in_time <= 0.0 {
+//            1.0
+//        } else {
+//            exp3.fade_in_time
+//        };
+//        base.fade_out_seconds = if exp3.fade_out_time <= 0.0 {
+//            1.0
+//        } else {
+//            exp3.fade_out_time
+//        };
+        base.fade_in_seconds             = exp3.fade_in_time;
+        base.fade_out_seconds = exp3.fade_out_time;
+
         base.is_loop = false;
 
         let params = exp3

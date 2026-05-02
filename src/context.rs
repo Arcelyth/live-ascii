@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::stdout;
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    mpsc::{Sender, Receiver, channel}
+};
 
 use ratatui::widgets::ListState;
 
@@ -17,6 +20,7 @@ use crate::live::json::*;
 use crate::tracker::*;
 use crate::model_setting::ModelSetting;
 use crate::ui::popup::*;
+use crate::receiver::*;
 
 #[derive(Debug)]
 pub enum OpPanel {
@@ -68,6 +72,8 @@ pub struct Context {
 
     pub tracker: Tracker,
     pub camera: bool,
+    pub receiver: Option<MsgReceiver>,
+    pub msg_chan: (Sender<String>, Receiver<String>),
     pub use_physics: bool,
     pub popups: Popups,
 }
@@ -93,6 +99,8 @@ impl Context {
             active_expressions: HashMap::new(),
             tracker,
             camera,
+            receiver: None, 
+            msg_chan: channel(),
             use_physics: false,
             popups: Popups::new(),
         }

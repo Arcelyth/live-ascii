@@ -30,6 +30,7 @@ use crate::motion::amotion::*;
 use crate::motion::json::*;
 use crate::motion::manager::*;
 use crate::physics::*;
+use crate::receiver::*;
 use crate::shader::*;
 use crate::ui::{popup::*, *};
 use crate::utils::*;
@@ -313,7 +314,7 @@ impl Renderer {
                                 context.popups.push_err("Failed to run tracker.")
                             });
                         } else {
-                            let text = "Stop facetraking";
+                            let text = "Stop facetracking";
                             context.popups.push(Popup::new(
                                 text,
                                 Duration::from_secs(3),
@@ -332,6 +333,44 @@ impl Renderer {
                             (text.len() + 3, 3),
                             Color::Rgb(144, 220, 222),
                         ));
+                    }
+                    Action::OpenCloseReceiver(port) => {
+                        if let Some(r) = &context.receiver {
+                            r.stop();
+                            context.receiver = None;
+                            let text = "Disable receiver";
+                            context.popups.push(Popup::new(
+                                text,
+                                Duration::from_secs(3),
+                                (text.len() + 3, 3),
+                                Color::Rgb(235, 129, 129),
+                            ));
+                        } else {
+                            if let Some(p) = port {
+                                let new_receiver = MsgReceiver::new(*p, context.msg_chan.0.clone());
+                                match new_receiver.run() {
+                                    Ok(_) => {
+                                        context.receiver = Some(new_receiver);
+                                        let text = "Enable receiver";
+                                        context.popups.push(Popup::new(
+                                            text,
+                                            Duration::from_secs(3),
+                                            (text.len() + 3, 3),
+                                            Color::Rgb(118, 232, 165),
+                                        ));
+                                    }
+                                    Err(_) => context.popups.push_err("Failed to run receiver."),
+                                }
+                            } else {
+                                let text = "Failed to get port";
+                                context.popups.push(Popup::new(
+                                    text,
+                                    Duration::from_secs(3),
+                                    (text.len() + 3, 3),
+                                    Color::Rgb(235, 129, 129),
+                                ));
+                            }
+                        }
                     }
                 }
             }
