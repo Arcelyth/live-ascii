@@ -12,8 +12,9 @@ use live_ascii::ffi::*;
 use live_ascii::live::json::*;
 use live_ascii::model_setting::ModelSetting;
 use live_ascii::motion::manager::*;
-use live_ascii::tracker::*;
 use live_ascii::physics::{Physics, json::*};
+use live_ascii::shader::*;
+use live_ascii::tracker::*;
 
 use live_ascii::renderer::*;
 use live_ascii::utils::*;
@@ -25,10 +26,13 @@ struct Args {
     model_setting: String, // model3.json file
     #[arg(short, long)]
     camera: bool,
+    #[arg(short, long)]
+    text_shader: Option<String>, // file path
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
+
     // load model setting
     let mut model_setting = ModelSetting::new(&args.model_setting)?;
     let model3_path = Path::new(&args.model_setting).canonicalize()?;
@@ -92,13 +96,24 @@ fn main() -> Result<(), Box<dyn Error>> {
         tracker,
     );
 
+    let mut shader_manager = ShaderManager::new();
+    if let Some(path) = &args.text_shader {
+        let content = fs::read_to_string(path)
+            .expect(&format!("Failed to read {}.", path))
+            .replace([' ', '\t', '\n', '\r'], "");
+        shader_manager.insert_hd(Shader::Text(content.into()));
+    }
+
     // load live json
     let full_path = Path::new(base_dir).join(&format!("{}.live.json", name));
     if let Ok(data) = fs::read_to_string(&full_path) {
         if let Ok(live) = Live::from_data(data) {
             context.set_live_setting(live);
         } else {
-            panic!("Error: The parameters or format of {:?} has error.", full_path);
+            panic!(
+                "Error: The parameters or format of {:?} has error.",
+                full_path
+            );
         }
     }
 
@@ -106,7 +121,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut mm = MotionManager::new();
 
     // initialize renderer
-    let mut renderer = Renderer::new(model_ptr, textures);
+    let mut renderer = Renderer::new(model_ptr, textures, shader_manager);
 
     // initialize expression
     let mut em = ExpressionManager::new();
@@ -121,9 +136,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     };
 
     // physics
-    
+
     let mut ph_file = if let Some(physics_file) = model_setting.get_physics_file_name() {
-        let p_json = PhysicsJson::from_path(base_dir.to_str().unwrap(), physics_file.to_str().unwrap())?;
+        let p_json =
+            PhysicsJson::from_path(base_dir.to_str().unwrap(), physics_file.to_str().unwrap())?;
         Some(Physics::from_json(p_json))
     } else {
         None
@@ -135,7 +151,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &mut model_setting,
         &mut em,
         &mut pos,
-        &mut ph_file
+        &mut ph_file,
     )?;
 
     Ok(())

@@ -60,7 +60,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(model_ptr: *mut CsmModel, textures: Vec<DynamicImage>) -> Self {
+    pub fn new(model_ptr: *mut CsmModel, textures: Vec<DynamicImage>, shader_manager: ShaderManager) -> Self {
         let model = Model::new(model_ptr);
         unsafe {
             Self {
@@ -75,7 +75,7 @@ impl Renderer {
                 indices: csmGetDrawableIndices(model_ptr),
                 multiply_colors: csmGetDrawableMultiplyColors(model_ptr),
                 screen_colors: csmGetDrawableScreenColors(model_ptr),
-                shader_manager: ShaderManager::new(),
+                shader_manager,
 
                 mask_counts: csmGetDrawableMaskCounts(model_ptr),
                 masks: csmGetDrawableMasks(model_ptr),
