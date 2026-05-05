@@ -1,14 +1,22 @@
+use std::sync::Arc;
+
+pub enum Shader {
+    Text(Arc<str>), 
+    Char(Box<[char]>),
+}
+
 pub struct ShaderManager {
-    shaders: Vec<Box<[char]>>,
+    shaders: Vec<Shader>,
     idx: usize,
 }
 
 impl ShaderManager {
     pub fn new() -> Self {
-        let shaders: Vec<Box<[char]>> = vec![
-            Box::new([' ', '.', ':', '-', '=', '+', '*', '#', '%', '@']),
-            Box::new(['⠀', '⠁', '⠃', '⠇', '⠧', '⠷', '⠿', '⡿', '⣿']),
-            Box::new([' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'])
+        let shaders: Vec<Shader> = vec![
+            Shader::Char(Box::new([' ', '.', ':', '-', '=', '+', '*', '#', '%', '@'])),
+            Shader::Text("HELLO".into()),
+            Shader::Char(Box::new(['⠀', '⠁', '⠃', '⠇', '⠧', '⠷', '⠿', '⡿', '⣿'])),
+            Shader::Char(Box::new([' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'])),
         ];
         Self {
             shaders,
@@ -16,7 +24,7 @@ impl ShaderManager {
         }
     }
 
-    pub fn current_shader(&self) -> &Box<[char]> {
+    pub fn current_shader(&self) -> &Shader {
         &self.shaders[self.idx]
     }
 

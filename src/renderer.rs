@@ -104,6 +104,13 @@ impl Renderer {
         let backend = CrosstermBackend::new(stdout());
         let mut terminal = Terminal::new(backend)?;
         let mut shader = self.shader_manager.current_shader();
+
+        let mut text_chars: Option<Vec<char>> = if let Shader::Text(t) = shader {
+            Some(t.chars().collect())
+        } else {
+            None
+        };
+
         let fps = 60.0;
         let target_frame_time = Duration::from_secs_f64(1.0 / fps);
         let mut last_frame = Instant::now();
@@ -326,6 +333,12 @@ impl Renderer {
                     Action::NextShader => {
                         self.shader_manager.next();
                         shader = self.shader_manager.current_shader();
+                        text_chars = if let Shader::Text(t) = shader {
+                            Some(t.chars().collect())
+                        } else {
+                            None
+                        };
+
                         let text = "Switch to next shader";
                         context.popups.push(Popup::new(
                             text,
@@ -603,18 +616,32 @@ impl Renderer {
                                         if a > 0 {
                                             let final_alpha = (a as f32 / 255.0) * opacity;
                                             if final_alpha > 0.1 {
-                                                let luminance = 0.299 * (r as f32)
-                                                    + 0.587 * (g as f32)
-                                                    + 0.114 * (b as f32);
+                                                let display_char = match shader {
+                                                    Shader::Char(chars) => {
+                                                        let luminance = 0.299 * (r as f32)
+                                                            + 0.587 * (g as f32)
+                                                            + 0.114 * (b as f32);
 
-                                                let char_index = (luminance / 255.0
-                                                    * (shader.len() - 1) as f32)
-                                                    .round()
-                                                    as usize;
-                                                let char_index =
-                                                    char_index.clamp(0, shader.len() - 1);
-                                                let display_char = shader[char_index];
-
+                                                        let char_index = (luminance / 255.0
+                                                            * (chars.len() - 1) as f32)
+                                                            .round()
+                                                            as usize;
+                                                        let char_index =
+                                                            char_index.clamp(0, chars.len() - 1);
+                                                        chars[char_index]
+                                                    }
+                                                    Shader::Text(_) => {
+                                                        if let Some(ref chars) = text_chars {
+                                                            let text_idx = (y as usize
+                                                                * context.width as usize
+                                                                + x as usize)
+                                                                % chars.len();
+                                                            chars[text_idx]
+                                                        } else {
+                                                            ' '
+                                                        }
+                                                    }
+                                                };
                                                 context.set_pixel(x, y, display_char, (r, g, b));
                                             }
                                         }
