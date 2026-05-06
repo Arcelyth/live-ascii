@@ -347,6 +347,24 @@ impl Renderer {
                             Color::Rgb(144, 220, 222),
                         ));
                     }
+                    Action::PrevShader => {
+                        self.shader_manager.prev();
+                        shader = self.shader_manager.current_shader();
+                        text_chars = if let Shader::Text(t) = shader {
+                            Some(t.chars().collect())
+                        } else {
+                            None
+                        };
+
+                        let text = "Switch to prev shader";
+                        context.popups.push(Popup::new(
+                            text,
+                            Duration::from_secs(3),
+                            (text.len() + 3, 3),
+                            Color::Rgb(144, 220, 222),
+                        ));
+
+                    }
                     Action::OpenCloseReceiver(port) => {
                         if let Some(r) = &context.receiver {
                             r.stop();

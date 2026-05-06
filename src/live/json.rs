@@ -28,6 +28,8 @@ pub enum HotkeyAction {
     OpenCloseCamera,
     #[serde(rename = "Next Shader")]
     NextShader,
+    #[serde(rename = "Previous Shader")]
+    PrevShader,
     #[serde(rename = "Open/Close Receiver")]
     OpenCloseReceiver,
 }
@@ -40,6 +42,7 @@ pub enum Action {
     EnableDisablePhysics,
     OpenCloseCamera,
     NextShader,
+    PrevShader,
     OpenCloseReceiver(Option<usize>),
 }
 
@@ -118,6 +121,11 @@ impl Hotkey {
             HotkeyAction::NextShader => {
                 if !action_queue.contains(&Action::NextShader) {
                     action_queue.push(Action::NextShader)
+                }
+            }
+            HotkeyAction::PrevShader => {
+                if !action_queue.contains(&Action::PrevShader) {
+                    action_queue.push(Action::PrevShader)
                 }
             }
             HotkeyAction::OpenCloseReceiver => {
