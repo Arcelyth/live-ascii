@@ -246,8 +246,8 @@ impl Renderer {
             }
 
             for action in &context.action_queue {
-                match action {
-                    Action::SetUnsetExpression(file) => {
+                match &action.kind {
+                    ActionKind::SetUnsetExpression(file) => {
                         if let Some(&saved_id) = context.active_expressions.get(file) {
                             if let Some(entry) = em.qm.motions.iter_mut().find(|e| e.id == saved_id)
                             {
@@ -267,7 +267,7 @@ impl Renderer {
                             }
                         }
                     }
-                    Action::OpenCloseMotionPanel => match context.current_panel {
+                    ActionKind::OpenCloseMotionPanel => match context.current_panel {
                         Panel::Op => {
                             if let OpPanel::Motions = context.current_op_panel {
                                 context.current_op_panel = OpPanel::None;
@@ -279,7 +279,7 @@ impl Renderer {
                             context.current_panel = Panel::Op;
                         }
                     },
-                    Action::OpenCloseDebugPanel => match context.current_panel {
+                    ActionKind::OpenCloseDebugPanel => match context.current_panel {
                         Panel::Debug => {
                             context.current_debug_panel = DebugPanel::None;
                             context.current_panel = Panel::None;
@@ -289,52 +289,55 @@ impl Renderer {
                             context.current_panel = Panel::Debug;
                         }
                     },
-                    Action::EnableDisablePhysics => {
+                    ActionKind::EnableDisablePhysics => {
                         context.use_physics = !context.use_physics;
-
-                        if context.use_physics {
-                            let text = "Enable physical effects";
-                            context.popups.push(Popup::new(
-                                text,
-                                Duration::from_secs(3),
-                                (text.len() + 3, 3),
-                                Color::Rgb(118, 232, 165),
-                            ));
-                        } else {
-                            let text = "Disable physical effects";
-                            context.popups.push(Popup::new(
-                                text,
-                                Duration::from_secs(3),
-                                (text.len() + 3, 3),
-                                Color::Rgb(235, 129, 129),
-                            ));
+                        if action.show_log {
+                            if context.use_physics {
+                                let text = "Enable physical effects";
+                                context.popups.push(Popup::new(
+                                    text,
+                                    Duration::from_secs(3),
+                                    (text.len() + 3, 3),
+                                    Color::Rgb(118, 232, 165),
+                                ));
+                            } else {
+                                let text = "Disable physical effects";
+                                context.popups.push(Popup::new(
+                                    text,
+                                    Duration::from_secs(3),
+                                    (text.len() + 3, 3),
+                                    Color::Rgb(235, 129, 129),
+                                ));
+                            }
                         }
                     }
-                    Action::OpenCloseCamera => {
+                    ActionKind::OpenCloseCamera => {
                         context.camera = !context.camera;
-                        if context.camera {
-                            let text = "Start facetracking";
-                            context.popups.push(Popup::new(
-                                text,
-                                Duration::from_secs(3),
-                                (text.len() + 3, 3),
-                                Color::Rgb(118, 232, 165),
-                            ));
+                        if action.show_log {
+                            if context.camera {
+                                let text = "Start facetracking";
+                                context.popups.push(Popup::new(
+                                    text,
+                                    Duration::from_secs(3),
+                                    (text.len() + 3, 3),
+                                    Color::Rgb(118, 232, 165),
+                                ));
 
-                            context.tracker.run().unwrap_or_else(|_| {
-                                context.popups.push_err("Failed to run tracker.")
-                            });
-                        } else {
-                            let text = "Stop facetracking";
-                            context.popups.push(Popup::new(
-                                text,
-                                Duration::from_secs(3),
-                                (text.len() + 3, 3),
-                                Color::Rgb(235, 129, 129),
-                            ));
+                                context.tracker.run().unwrap_or_else(|_| {
+                                    context.popups.push_err("Failed to run tracker.")
+                                });
+                            } else {
+                                let text = "Stop facetracking";
+                                context.popups.push(Popup::new(
+                                    text,
+                                    Duration::from_secs(3),
+                                    (text.len() + 3, 3),
+                                    Color::Rgb(235, 129, 129),
+                                ));
+                            }
                         }
                     }
-                    Action::NextShader => {
+                    ActionKind::NextShader => {
                         self.shader_manager.next();
                         shader = self.shader_manager.current_shader();
                         text_chars = if let Shader::Text(t) = shader {
@@ -342,16 +345,17 @@ impl Renderer {
                         } else {
                             None
                         };
-
-                        let text = "Switch to next shader";
-                        context.popups.push(Popup::new(
-                            text,
-                            Duration::from_secs(3),
-                            (text.len() + 3, 3),
-                            Color::Rgb(144, 220, 222),
-                        ));
+                        if action.show_log {
+                            let text = "Switch to next shader";
+                            context.popups.push(Popup::new(
+                                text,
+                                Duration::from_secs(3),
+                                (text.len() + 3, 3),
+                                Color::Rgb(144, 220, 222),
+                            ));
+                        }
                     }
-                    Action::PrevShader => {
+                    ActionKind::PrevShader => {
                         self.shader_manager.prev();
                         shader = self.shader_manager.current_shader();
                         text_chars = if let Shader::Text(t) = shader {
@@ -360,49 +364,57 @@ impl Renderer {
                             None
                         };
 
-                        let text = "Switch to prev shader";
-                        context.popups.push(Popup::new(
-                            text,
-                            Duration::from_secs(3),
-                            (text.len() + 3, 3),
-                            Color::Rgb(144, 220, 222),
-                        ));
-                    }
-                    Action::OpenCloseReceiver(port) => {
-                        if let Some(r) = &context.receiver {
-                            r.stop();
-                            context.receiver = None;
-                            let text = "Disable receiver";
+                        if action.show_log {
+                            let text = "Switch to prev shader";
                             context.popups.push(Popup::new(
                                 text,
                                 Duration::from_secs(3),
                                 (text.len() + 3, 3),
-                                Color::Rgb(235, 129, 129),
+                                Color::Rgb(144, 220, 222),
                             ));
-                        } else {
-                            if let Some(p) = port {
-                                let new_receiver = MsgReceiver::new(*p, context.msg_chan.0.clone());
-                                match new_receiver.run() {
-                                    Ok(_) => {
-                                        context.receiver = Some(new_receiver);
-                                        let text = "Enable receiver";
-                                        context.popups.push(Popup::new(
-                                            text,
-                                            Duration::from_secs(3),
-                                            (text.len() + 3, 3),
-                                            Color::Rgb(118, 232, 165),
-                                        ));
-                                    }
-                                    Err(_) => context.popups.push_err("Failed to run receiver."),
-                                }
-                            } else {
-                                let text = "Failed to get port";
+                        }
+                    }
+                    ActionKind::OpenCloseReceiver(port) => {
+                        if let Some(r) = &context.receiver {
+                            r.stop();
+                            context.receiver = None;
+                            if action.show_log {
+                                let text = "Disable receiver";
                                 context.popups.push(Popup::new(
                                     text,
                                     Duration::from_secs(3),
                                     (text.len() + 3, 3),
                                     Color::Rgb(235, 129, 129),
                                 ));
+                            }
+                        } else {
+                            if let Some(p) = port {
+                                let new_receiver = MsgReceiver::new(*p, context.msg_chan.0.clone());
+                                match new_receiver.run() {
+                                    Ok(_) => {
+                                        context.receiver = Some(new_receiver);
+                                        if action.show_log {
+                                            let text = "Enable receiver";
+                                            context.popups.push(Popup::new(
+                                                text,
+                                                Duration::from_secs(3),
+                                                (text.len() + 3, 3),
+                                                Color::Rgb(118, 232, 165),
+                                            ));
+                                        }
+                                    }
+                                    Err(_) => context.popups.push_err("Failed to run receiver."),
+                                }
+                            } else {
+                                if action.show_log {
+                                    let text = "Failed to get port";
+                                    context.popups.push(Popup::new(
+                                        text,
+                                        Duration::from_secs(3),
+                                        (text.len() + 3, 3),
+                                        Color::Rgb(235, 129, 129),
+                                    ));
+                                }
                             }
                         }
                     }

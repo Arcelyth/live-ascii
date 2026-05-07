@@ -35,7 +35,7 @@ pub enum HotkeyAction {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
-pub enum Action {
+pub enum ActionKind {
     SetUnsetExpression(String),
     OpenCloseMotionPanel,
     OpenCloseDebugPanel,
@@ -44,6 +44,12 @@ pub enum Action {
     NextShader,
     PrevShader,
     OpenCloseReceiver(Option<usize>),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct Action {
+    pub kind: ActionKind,
+    pub show_log: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -73,7 +79,7 @@ pub struct Hotkey {
 }
 
 fn default_show_log() -> bool {
-    return true
+    return true;
 }
 
 impl Hotkey {
@@ -97,48 +103,24 @@ impl Hotkey {
     }
 
     pub fn apply(&self, action_queue: &mut Vec<Action>) {
-        match self.action {
-            HotkeyAction::SetUnsetExpression => {
-                let a = Action::SetUnsetExpression(self.file.clone());
-                if !action_queue.contains(&a) {
-                    action_queue.push(a);
-                }
-            }
-            HotkeyAction::OpenCloseMotionPanel => {
-                if !action_queue.contains(&Action::OpenCloseMotionPanel) {
-                    action_queue.push(Action::OpenCloseMotionPanel)
-                }
-            }
-            HotkeyAction::OpenCloseDebugPanel => {
-                if !action_queue.contains(&Action::OpenCloseDebugPanel) {
-                    action_queue.push(Action::OpenCloseDebugPanel)
-                }
-            }
-            HotkeyAction::EnableDisablePhysics => {
-                if !action_queue.contains(&Action::EnableDisablePhysics) {
-                    action_queue.push(Action::EnableDisablePhysics)
-                }
-            }
-            HotkeyAction::OpenCloseCamera => {
-                if !action_queue.contains(&Action::OpenCloseCamera) {
-                    action_queue.push(Action::OpenCloseCamera)
-                }
-            }
-            HotkeyAction::NextShader => {
-                if !action_queue.contains(&Action::NextShader) {
-                    action_queue.push(Action::NextShader)
-                }
-            }
-            HotkeyAction::PrevShader => {
-                if !action_queue.contains(&Action::PrevShader) {
-                    action_queue.push(Action::PrevShader)
-                }
-            }
-            HotkeyAction::OpenCloseReceiver => {
-                if !action_queue.contains(&Action::OpenCloseReceiver(self.port)) {
-                    action_queue.push(Action::OpenCloseReceiver(self.port))
-                }
-            }
+        let kind = match self.action {
+            HotkeyAction::SetUnsetExpression => ActionKind::SetUnsetExpression(self.file.clone()),
+            HotkeyAction::OpenCloseMotionPanel => ActionKind::OpenCloseMotionPanel,
+            HotkeyAction::OpenCloseDebugPanel => ActionKind::OpenCloseDebugPanel,
+            HotkeyAction::EnableDisablePhysics => ActionKind::EnableDisablePhysics,
+            HotkeyAction::OpenCloseCamera => ActionKind::OpenCloseCamera,
+            HotkeyAction::NextShader => ActionKind::NextShader,
+            HotkeyAction::PrevShader => ActionKind::PrevShader,
+            HotkeyAction::OpenCloseReceiver => ActionKind::OpenCloseReceiver(self.port),
+        };
+
+        let action = Action {
+            kind,
+            show_log: self.show_log,
+        };
+
+        if !action_queue.contains(&action) {
+            action_queue.push(action);
         }
     }
 }
@@ -212,7 +194,7 @@ mod tests {
                 stop_after_seconds: 3.,
                 stop_when_release_key: false,
                 port: None,
-                show_log: true
+                show_log: true,
             }],
         };
         assert_eq!(live, expected);
