@@ -60,7 +60,11 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(model_ptr: *mut CsmModel, textures: Vec<DynamicImage>, shader_manager: ShaderManager) -> Self {
+    pub fn new(
+        model_ptr: *mut CsmModel,
+        textures: Vec<DynamicImage>,
+        shader_manager: ShaderManager,
+    ) -> Self {
         let model = Model::new(model_ptr);
         unsafe {
             Self {
@@ -363,7 +367,6 @@ impl Renderer {
                             (text.len() + 3, 3),
                             Color::Rgb(144, 220, 222),
                         ));
-
                     }
                     Action::OpenCloseReceiver(port) => {
                         if let Some(r) = &context.receiver {
@@ -529,8 +532,8 @@ impl Renderer {
                                 for y in min_y..=max_y {
                                     for x in min_x..=max_x {
                                         let p = Vec3 {
-                                            x: x as f32,
-                                            y: y as f32,
+                                            x: x as f32 + 0.5,
+                                            y: y as f32 + 0.5,
                                             z: 0.0,
                                         };
                                         let w0 =
@@ -629,8 +632,40 @@ impl Renderer {
                                     let tex_y = ((1.0 - v) * (img_h as f32 - 1.0)) as u32;
 
                                     if tex_x < img_w && tex_y < img_h {
-                                        let pixel = current_texture.get_pixel(tex_x, tex_y);
-                                        let (r, g, b, a) = (pixel[0], pixel[1], pixel[2], pixel[3]);
+                                        let fx = u * (img_w as f32 - 1.0);
+                                        let fy = (1.0 - v) * (img_h as f32 - 1.0);
+
+                                        let x0 = fx.floor() as u32;
+                                        let y0 = fy.floor() as u32;
+                                        let x1 = (x0 + 1).min(img_w - 1);
+                                        let y1 = (y0 + 1).min(img_h - 1);
+
+                                        let tx = fx - x0 as f32;
+                                        let ty = fy - y0 as f32;
+
+                                        let p00 = current_texture.get_pixel(x0, y0);
+                                        let p10 = current_texture.get_pixel(x1, y0);
+                                        let p01 = current_texture.get_pixel(x0, y1);
+                                        let p11 = current_texture.get_pixel(x1, y1);
+
+                                        // TODO: add to math.rs
+                                        let lerp = |a: f32, b: f32, t: f32| a * (1.0 - t) + b * t;
+
+                                        let r0 = lerp(p00[0] as f32, p10[0] as f32, tx);
+                                        let r1 = lerp(p01[0] as f32, p11[0] as f32, tx);
+                                        let r = lerp(r0, r1, ty) as u8;
+
+                                        let g0 = lerp(p00[1] as f32, p10[1] as f32, tx);
+                                        let g1 = lerp(p01[1] as f32, p11[1] as f32, tx);
+                                        let g = lerp(g0, g1, ty) as u8;
+
+                                        let b0 = lerp(p00[2] as f32, p10[2] as f32, tx);
+                                        let b1 = lerp(p01[2] as f32, p11[2] as f32, tx);
+                                        let b = lerp(b0, b1, ty) as u8;
+
+                                        let a0 = lerp(p00[3] as f32, p10[3] as f32, tx);
+                                        let a1 = lerp(p01[3] as f32, p11[3] as f32, tx);
+                                        let a = lerp(a0, a1, ty) as u8;
                                         if a > 0 {
                                             let final_alpha = (a as f32 / 255.0) * opacity;
                                             if final_alpha > 0.1 {

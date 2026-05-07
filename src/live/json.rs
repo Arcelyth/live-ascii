@@ -68,6 +68,12 @@ pub struct Hotkey {
     #[serde(default)]
     pub stop_when_release_key: bool,
     pub port: Option<usize>,
+    #[serde(default = "default_show_log")]
+    pub show_log: bool,
+}
+
+fn default_show_log() -> bool {
+    return true
 }
 
 impl Hotkey {
@@ -206,6 +212,7 @@ mod tests {
                 stop_after_seconds: 3.,
                 stop_when_release_key: false,
                 port: None,
+                show_log: true
             }],
         };
         assert_eq!(live, expected);
