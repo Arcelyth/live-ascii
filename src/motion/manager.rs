@@ -1,5 +1,5 @@
-use crate::motion::amotion::*;
 use crate::model::Model;
+use crate::motion::amotion::*;
 use crate::motion::queue::*;
 
 #[derive(Debug)]
@@ -13,13 +13,18 @@ impl MotionManager {
     pub fn new() -> Self {
         let qm = MotionQueueManager::new();
         Self {
-            qm, 
+            qm,
             current_prior: 0,
             reserve_prior: 0,
         }
     }
 
-    pub fn start_motion_priority(&mut self, motion: CubismMotion, auto_delete: bool, priority: usize) {
+    pub fn start_motion_priority(
+        &mut self,
+        motion: CubismMotion,
+        auto_delete: bool,
+        priority: usize,
+    ) {
         if priority == self.reserve_prior {
             self.reserve_prior = 0;
         }
@@ -45,4 +50,3 @@ impl MotionManager {
         }
     }
 }
-

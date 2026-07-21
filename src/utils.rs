@@ -84,7 +84,7 @@ pub fn get_file_name(filename: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-   
+
     #[test]
     fn get_file_name_test() {
         let pre = get_file_name("test.model3.json");

@@ -70,7 +70,7 @@ impl fmt::Debug for MotionQueueManager {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MotionQueueManager")
             .field("user_time_seconds", &self.user_time_seconds)
-            .field("event_callback", &"<callback>")  
+            .field("event_callback", &"<callback>")
             .field("id_counter", &self.id_counter)
             .finish()
     }

@@ -148,7 +148,7 @@ impl Tracker {
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
         if self.is_running.load(Ordering::SeqCst) {
             return Ok(());
-        } 
+        }
         self.is_running.store(true, Ordering::SeqCst);
         let socket = UdpSocket::bind("127.0.0.1:11573")?;
         let latest_thread = Arc::clone(&self.latest);

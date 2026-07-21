@@ -342,7 +342,7 @@ pub fn render_popups(popups: &Popups, frame: &mut Frame) {
     let mut offset_y = 0;
     for popup in &popups.inner {
         let (w, h) = popup.size;
-        
+
         let (raw_x, raw_y) = if let Some((x, y)) = popup.position {
             (x as u16, y as u16)
         } else {
@@ -367,7 +367,7 @@ pub fn render_popups(popups: &Popups, frame: &mut Frame) {
         let rect = Rect::new(raw_x, raw_y, safe_w, safe_h);
 
         frame.render_widget(Clear, rect);
-        
+
         let block = Block::default()
             .borders(Borders::ALL)
             .style(Style::default().fg(popup.color));

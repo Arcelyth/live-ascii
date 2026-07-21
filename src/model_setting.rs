@@ -263,7 +263,8 @@ impl ModelSetting {
     }
 
     pub fn get_all_motion_names(&self) -> Vec<&str> {
-        let mut names: Vec<&str> = self.file_references
+        let mut names: Vec<&str> = self
+            .file_references
             .motions
             .values()
             .flat_map(|group| group.iter())

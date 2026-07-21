@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file_refs = &model_setting.file_references;
 
     // get model name
-    let mut name = "";
+    let name;
 
     let mut moc_data = Vec::new();
     if let Some(moc_relative_path) = &file_refs.moc {

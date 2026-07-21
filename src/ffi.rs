@@ -100,7 +100,6 @@ pub struct CsmVector4 {
 /// * `message` - Null-terminated string message to log.
 pub type CsmLogFunction = Option<unsafe extern "C" fn(message: *const c_char)>;
 
-
 unsafe extern "C" {
     /* ------- *
      * VERSION *
@@ -354,4 +353,3 @@ unsafe extern "C" {
 pub fn csm_get_version() -> u32 {
     unsafe { csmGetVersion() }
 }
-

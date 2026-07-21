@@ -742,7 +742,7 @@ impl Renderer {
                         Duration::from_secs_f64(msg.duration),
                         (display_width, row_num),
                         Color::Rgb(msg.color.0, msg.color.1, msg.color.2),
-                        msg.id
+                        msg.id,
                     ));
                 } else {
                     context.popups.delete(msg.id);

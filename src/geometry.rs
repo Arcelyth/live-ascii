@@ -3,7 +3,7 @@
 #[derive(Debug, Copy, Clone)]
 pub struct Vec3 {
     pub x: f32,
-    pub y: f32, 
+    pub y: f32,
     pub z: f32,
 }
 
@@ -33,14 +33,16 @@ impl Triangle {
         let maxx = self.v1.x.max(self.v2.x).max(self.v3.x);
         let maxy = self.v1.y.max(self.v2.y).max(self.v3.y);
         BoundingBox {
-            minx, miny, maxx, maxy
-        }                  
+            minx,
+            miny,
+            maxx,
+            maxy,
+        }
     }
 
     pub fn signed_area(&self) -> f32 {
-        return 0.5 * ((self.v2.x - self.v1.x) * (self.v3.y - self.v1.y) - (self.v2.y - self.v1.y) * (self.v3.x - self.v1.x))
+        return 0.5
+            * ((self.v2.x - self.v1.x) * (self.v3.y - self.v1.y)
+                - (self.v2.y - self.v1.y) * (self.v3.x - self.v1.x));
     }
-
 }
-
-

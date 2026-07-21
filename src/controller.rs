@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::model::Model;
 use crate::tracker::Packet;
-use glam::{EulerRot, Quat}; 
+use glam::{EulerRot, Quat};
 
 fn lerp(start: f32, end: f32, t: f32) -> f32 {
     start + (end - start) * t
@@ -40,9 +40,9 @@ impl FaceController {
     }
 
     pub fn update_parameters(&mut self, model: &mut Model, packet: &Packet) {
-        const HEAD_X_GAIN: f32 = 40.0; 
-        const HEAD_Y_GAIN: f32 = 40.0; 
-        const HEAD_Z_GAIN: f32 = 40.0; 
+        const HEAD_X_GAIN: f32 = 40.0;
+        const HEAD_Y_GAIN: f32 = 40.0;
+        const HEAD_Z_GAIN: f32 = 40.0;
 
         const BODY_X_GAIN: f32 = 10.0;
         const BODY_Y_GAIN: f32 = 10.0;

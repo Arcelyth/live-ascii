@@ -3,7 +3,7 @@ use std::error::Error;
 use std::io::stdout;
 use std::sync::{
     Arc,
-    mpsc::{Sender, Receiver, channel}
+    mpsc::{Receiver, Sender, channel},
 };
 
 use ratatui::widgets::ListState;
@@ -17,10 +17,10 @@ use ratatui::style::{Color as RatatuiColor, Style};
 use ratatui::text::{Line, Span, Text};
 
 use crate::live::json::*;
-use crate::tracker::*;
 use crate::model_setting::ModelSetting;
-use crate::ui::popup::*;
 use crate::receiver::*;
+use crate::tracker::*;
+use crate::ui::popup::*;
 
 #[derive(Debug)]
 pub enum OpPanel {
@@ -34,7 +34,7 @@ pub enum DebugPanel {
     Parameters,
     PartOpacities,
     AppliedExp,
-    ActionQueue, 
+    ActionQueue,
     Camera,
     Manager,
 }
@@ -45,7 +45,6 @@ pub enum Panel {
     Op,
     Debug,
 }
-
 
 #[derive(Debug)]
 pub struct Context {
@@ -79,7 +78,13 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(image: bool, model_setting: ModelSetting, base_dir: &str, camera: bool, tracker: Tracker) -> Self {
+    pub fn new(
+        image: bool,
+        model_setting: ModelSetting,
+        base_dir: &str,
+        camera: bool,
+        tracker: Tracker,
+    ) -> Self {
         Self {
             width: 0,
             height: 0,
@@ -99,7 +104,7 @@ impl Context {
             active_expressions: HashMap::new(),
             tracker,
             camera,
-            receiver: None, 
+            receiver: None,
             msg_chan: channel(),
             use_physics: false,
             popups: Popups::new(),
@@ -188,5 +193,4 @@ impl Context {
     pub fn get_active_expressions(&self) -> Vec<&str> {
         self.active_expressions.keys().map(|s| s.as_str()).collect()
     }
-
 }
