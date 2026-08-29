@@ -311,7 +311,9 @@ unsafe extern "C" {
 
     /// Gets drawable render orders.
     /// The higher the order, the more up front a drawable is.
-    pub fn csmGetDrawableRenderOrders(model: *const CsmModel) -> *const i32;
+    ///    pub fn csmGetDrawableRenderOrders(model: *const CsmModel) -> *const i32;
+    /// After 5-r.5-beta.1
+    pub fn csmGetRenderOrders(model: *const CsmModel) -> *const i32;
 
     /// Gets drawable opacities.
     pub fn csmGetDrawableOpacities(model: *const CsmModel) -> *const f32;

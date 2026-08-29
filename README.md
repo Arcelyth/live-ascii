@@ -7,6 +7,7 @@ A Live2D Cubism model renderer for terminal. It also support face tracking.
 ## Usage 
 
 You must have the Live2D Cubism SDK Core library: [Live2D Cubism SDK](https://www.live2d.com/en/sdk/about/). <br>
+*(need version 5-r.5)*
 Create a .env file in the project root to specify the path to the SDK directory:
 ```.env
 # Example .env configuration

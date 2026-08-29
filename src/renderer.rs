@@ -470,7 +470,8 @@ impl Renderer {
                 let dy_flags = csmGetDrawableDynamicFlags(self.model.model);
                 let opacities = csmGetDrawableOpacities(self.model.model);
                 let vt_positions = csmGetDrawableVertexPositions(self.model.model);
-                let render_orders = csmGetDrawableRenderOrders(self.model.model);
+                //                let render_orders = csmGetDrawableRenderOrders(self.model.model);
+                let render_orders = csmGetRenderOrders(self.model.model);
 
                 self.multiply_colors = csmGetDrawableMultiplyColors(self.model.model);
                 self.screen_colors = csmGetDrawableScreenColors(self.model.model);

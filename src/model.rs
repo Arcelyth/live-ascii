@@ -315,7 +315,8 @@ impl Model {
 
     pub fn get_render_orders(&self) -> &[i32] {
         unsafe {
-            std::slice::from_raw_parts(csmGetDrawableRenderOrders(self.model), self.drawable_count)
+            //            std::slice::from_raw_parts(csmGetDrawableRenderOrders(self.model), self.drawable_count)
+            std::slice::from_raw_parts(csmGetRenderOrders(self.model), self.drawable_count)
         }
     }
 
