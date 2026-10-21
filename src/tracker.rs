@@ -7,6 +7,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
     },
     thread,
+    time::Duration,
 };
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -149,14 +150,16 @@ impl Tracker {
         if self.is_running.load(Ordering::SeqCst) {
             return Ok(());
         }
-        self.is_running.store(true, Ordering::SeqCst);
         let socket = UdpSocket::bind("127.0.0.1:11573")?;
+        socket.set_read_timeout(Some(Duration::from_millis(200)))?;
+        self.is_running.store(true, Ordering::SeqCst);
         let latest_thread = Arc::clone(&self.latest);
+        let is_running = Arc::clone(&self.is_running);
 
         thread::spawn(move || {
             let mut buf = [0u8; 2048];
 
-            loop {
+            while is_running.load(Ordering::SeqCst) {
                 match socket.recv_from(&mut buf) {
                     Ok((amt, _src)) => {
                         if let Some(packet) = parse_packet(&buf[..amt]) {
@@ -165,9 +168,15 @@ impl Tracker {
                             }
                         }
                     }
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                        ) => {}
                     Err(_) => break,
                 }
             }
+            is_running.store(false, Ordering::SeqCst);
         });
         Ok(())
     }

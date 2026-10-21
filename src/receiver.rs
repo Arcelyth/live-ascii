@@ -44,17 +44,13 @@ impl MsgReceiver {
             return Ok(());
         }
 
+        let socket = UdpSocket::bind(format!("127.0.0.1:{}", self.port))?;
+        socket.set_read_timeout(Some(Duration::from_millis(200)))?;
         self.is_running.store(true, Ordering::SeqCst);
         let is_running = Arc::clone(&self.is_running);
         let tx = self.sender.clone();
-        let port = self.port;
 
         thread::spawn(move || {
-            let socket = UdpSocket::bind(format!("127.0.0.1:{}", port)).unwrap();
-            socket
-                .set_read_timeout(Some(Duration::from_millis(200)))
-                .unwrap();
-
             let mut buf = [0u8; 2048];
             while is_running.load(Ordering::SeqCst) {
                 if let Ok((amt, _)) = socket.recv_from(&mut buf) {

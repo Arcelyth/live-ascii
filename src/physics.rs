@@ -196,7 +196,7 @@ impl PhysicsOutput {
             destination,
             destination_parameter_index,
             vertex_index,
-            translation_scale: Vec2::new(0., 0.),
+            translation_scale: Vec2::splat(angle_scale),
             angle_scale,
             weight,
             kind,
@@ -288,11 +288,11 @@ impl Physics {
         }
     }
 
-    pub fn from_json(json: PhysicsJson) -> Self {
+    pub fn from_json(json: PhysicsJson) -> Result<Self, Box<dyn std::error::Error>> {
         let forces = json.meta.effective_forces;
         let gravity = Vec2::new(forces.gravity.x, forces.gravity.y);
         let wind = Vec2::new(forces.wind.x, forces.wind.y);
-        let sub_rig_count = json.meta.setting_count;
+        let sub_rig_count = json.settings.len();
         let fps = json.meta.fps;
 
         let mut sub_rigs = vec![];
@@ -341,7 +341,7 @@ impl Physics {
                         PhysicsSource::Angle,
                         get_input_angle_from_normalized as NormalizedPhysicsParameterValueGetter,
                     ),
-                    _ => panic!("Unknown physics input type: {}", input.kind),
+                    _ => return Err(format!("Unknown physics input type: {}", input.kind).into()),
                 };
                 let source = PhysicsParameter {
                     target_type: PhysicsTargetType::Parameter,
@@ -384,7 +384,7 @@ impl Physics {
                         get_output_angle as PhysicsValueGetter,
                         get_output_scale_angle as PhysicsScaleGetter,
                     ),
-                    _ => panic!("Unknown physics output type: {}", output.kind),
+                    _ => return Err(format!("Unknown physics output type: {}", output.kind).into()),
                 };
                 let p_output = PhysicsOutput::new(
                     dest,
@@ -432,11 +432,11 @@ impl Physics {
             fps,
         );
 
-        Physics::new(rig)
+        Ok(Physics::new(rig))
     }
 
     pub fn evaluate(&mut self, model: &mut Model, delta_time: f32) {
-        if delta_time <= 0. {
+        if !delta_time.is_finite() || delta_time <= 0. {
             return;
         }
         self.current_remain_time += delta_time;
@@ -512,6 +512,9 @@ impl Physics {
                             model.get_parameter_index(&input.source.id) as i32;
                     }
                     let src_idx = input.source_parameter_index as usize;
+                    if src_idx >= param_count {
+                        continue;
+                    }
 
                     (input.get_normalized_parameter_value)(
                         &mut total_translation,
@@ -579,6 +582,9 @@ impl Physics {
                     self.current_rig_outputs[setting_idx][i] = output_value;
 
                     let dest_idx = output.destination_parameter_index as usize;
+                    if dest_idx >= param_count {
+                        continue;
+                    }
 
                     Self::update_output_parameter_value(
                         &mut self.parameter_caches[dest_idx],
@@ -618,6 +624,9 @@ impl Physics {
                 }
 
                 let dest_idx = dest_idx as usize;
+                if dest_idx >= param_count {
+                    continue;
+                }
 
                 let interpolated_value = self.previous_rig_outputs[setting_idx][local_idx]
                     * (1.0 - weight)
@@ -672,6 +681,9 @@ impl Physics {
         delta_time: f32,
         air_resistance: f32,
     ) {
+        if strand.is_empty() {
+            return;
+        }
         strand[0].position = total_translation;
         let total_radian = total_angel.to_radians();
         let current_gravity: Vec2 = total_radian.sin_cos().into();
@@ -694,7 +706,7 @@ impl Physics {
             let force = strand[i].force * delay * delay;
             strand[i].position = strand[i].position + velocity + force;
             let mut new_direction = strand[i].position - strand[i - 1].position;
-            new_direction = new_direction.normalize();
+            new_direction = new_direction.normalize_or_zero();
             strand[i].position = strand[i - 1].position + new_direction * strand[i].radius;
             if strand[i].position.x.abs() < threshold_value {
                 strand[i].position.x = 0.;

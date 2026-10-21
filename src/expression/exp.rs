@@ -99,7 +99,7 @@ impl ExpMotion {
         model: &mut Model,
         _user_time_s: f32,
         weight: f32,
-        _qe: &mut MotionQueueEntry,
+        _qe: &mut MotionQueueState,
     ) {
         for param in &self.params {
             match param.blend_type {
@@ -120,7 +120,7 @@ impl ExpMotion {
         &mut self,
         model: &mut Model,
         user_time_s: f32,
-        qe: &mut MotionQueueEntry,
+        qe: &mut MotionQueueState,
         expression_parameter_values: &mut Vec<ExpValue>,
         expression_index: usize,
         fade_weight: f32,
@@ -210,7 +210,7 @@ impl ACubismMotion for ExpMotion {
     fn update_parameters(
         &mut self,
         model: &mut Model,
-        qe: &mut MotionQueueEntry,
+        qe: &mut MotionQueueState,
         user_time_s: f32,
     ) {
         if !qe.available || qe.finished {
@@ -219,12 +219,12 @@ impl ACubismMotion for ExpMotion {
         self.setup_motion_queue_entry(qe, user_time_s);
         let fade_weight = self.update_fade_weight(qe, user_time_s);
         self.do_update_parameters(model, user_time_s, fade_weight, qe);
-        if qe.end_time_seconds > 0. && qe.end_time_seconds < user_time_s {
+        if qe.end_time_seconds >= 0. && qe.end_time_seconds <= user_time_s {
             qe.finished = true;
         }
     }
 
-    fn adjust_end_time(&self, qe: &mut MotionQueueEntry) {
+    fn adjust_end_time(&self, qe: &mut MotionQueueState) {
         let duration = self.get_duration();
         qe.end_time_seconds = if duration <= 0. {
             -1.
@@ -233,7 +233,7 @@ impl ACubismMotion for ExpMotion {
         };
     }
 
-    fn setup_motion_queue_entry(&self, entry: &mut MotionQueueEntry, user_time: f32) {
+    fn setup_motion_queue_entry(&self, entry: &mut MotionQueueState, user_time: f32) {
         if !entry.available || entry.finished || entry.started {
             return;
         }
@@ -247,7 +247,7 @@ impl ACubismMotion for ExpMotion {
         }
     }
 
-    fn update_fade_weight(&self, entry: &mut MotionQueueEntry, user_time: f32) -> f32 {
+    fn update_fade_weight(&self, entry: &mut MotionQueueState, user_time: f32) -> f32 {
         let mut fade_weight = self.base.weight;
 
         let fade_in = if self.base.fade_in_seconds <= 0.0 {

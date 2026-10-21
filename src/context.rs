@@ -117,8 +117,8 @@ impl Context {
 
     pub fn set_pixel(&mut self, x: u16, y: u16, ch: char, color: (u8, u8, u8)) {
         if x < self.width && y < self.height {
-            let idx = x + y * self.width;
-            self.frame_buffer[idx as usize] = (ch, color);
+            let idx = x as usize + y as usize * self.width as usize;
+            self.frame_buffer[idx] = (ch, color);
         }
     }
 
@@ -162,7 +162,7 @@ impl Context {
             self.width = tw;
             self.height = th;
             self.frame_buffer
-                .resize((tw * th) as usize, (' ', (0, 0, 0)));
+                .resize(tw as usize * th as usize, (' ', (0, 0, 0)));
         }
         Ok(())
     }
@@ -177,7 +177,7 @@ impl Context {
         for y in 0..self.height {
             let mut spans = Vec::with_capacity(self.width as usize);
             for x in 0..self.width {
-                let idx = (y * self.width + x) as usize;
+                let idx = y as usize * self.width as usize + x as usize;
                 if let Some((ch, (r, g, b))) = self.frame_buffer.get(idx) {
                     spans.push(Span::styled(
                         ch.to_string(),

@@ -11,6 +11,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 pub struct MotionMeta {
     pub duration: f32,
     pub fps: f32,
+    #[serde(rename = "Loop")]
     pub loop_: bool,
     #[serde(default)]
     pub are_beziers_restricted: bool,
@@ -92,8 +93,12 @@ impl<'de> Deserialize<'de> for Segments {
                 A: SeqAccess<'de>,
             {
                 let mut result = vec![];
-                let time: f32 = seq.next_element()?.unwrap();
-                let value: f32 = seq.next_element()?.unwrap();
+                let time: f32 = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("Missing initial curve point"))?;
+                let value: f32 = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::custom("Missing initial curve point"))?;
                 let mut last_point = SegmentPoint { time, value };
 
                 while let Some(seg_ty) = seq.next_element()? as Option<i32> {
@@ -175,6 +180,20 @@ impl<'de> Deserialize<'de> for Segments {
                         _ => return Err(de::Error::custom("Unknown segment format.")),
                     }
                 }
+                if result.is_empty() {
+                    return Err(de::Error::custom("Curve must contain at least one segment"));
+                }
+                for segment in &result {
+                    let (start, end) = match segment {
+                        SegmentType::Linear(a, b)
+                        | SegmentType::Stepped(a, b)
+                        | SegmentType::InverseStepped(a, b) => (a, b),
+                        SegmentType::Bezier(p) => (&p[0], &p[3]),
+                    };
+                    if !start.time.is_finite() || !end.time.is_finite() || end.time <= start.time {
+                        return Err(de::Error::custom("Segment times must increase"));
+                    }
+                }
                 Ok(Segments(result))
             }
         }
@@ -232,6 +251,17 @@ impl MotionData {
 
         let m3: Motion3 = serde_json::from_str(&data)
             .map_err(|e| format!("Failed to parse JSON ({:?}): {}", full_path, e))?;
+        Self::from_motion3(m3)
+    }
+
+    pub fn from_motion3(m3: Motion3) -> Result<Self, Box<dyn Error>> {
+        if !m3.meta.duration.is_finite()
+            || m3.meta.duration < 0.0
+            || !m3.meta.fps.is_finite()
+            || m3.meta.fps <= 0.0
+        {
+            return Err("Motion duration must be nonnegative and FPS must be positive".into());
+        }
         let mut curves = Vec::with_capacity(m3.curves.len());
         let mut segments = Vec::new();
         let mut points = Vec::new();
@@ -240,8 +270,12 @@ impl MotionData {
             let base_segment_index = segments.len();
             let mut segment_count = 0;
 
+            if curve.segments.0.is_empty() {
+                return Err(format!("Curve {} has no segments", curve.id).into());
+            }
             for seg in curve.segments.0 {
-                let base_point_index = points.len();
+                // Subsequent segments share the preceding endpoint.
+                let base_point_index = points.len() - usize::from(segment_count > 0);
 
                 match seg {
                     SegmentType::Linear(p0, p1) => {
@@ -294,7 +328,7 @@ impl MotionData {
                 "Parameter" => CurveTargetType::Parameter,
                 "PartOpacity" => CurveTargetType::PartOpacity,
                 "Model" => CurveTargetType::Model,
-                _ => panic!("Unknow target type."),
+                _ => return Err(format!("Unknown curve target: {}", curve.target).into()),
             };
 
             curves.push(MotionCurve {
@@ -372,7 +406,7 @@ mod tests {
                     segment_type: MotionSegmentType::Linear,
                 },
                 MotionSegment {
-                    base_point_index: 2,
+                    base_point_index: 1,
                     segment_type: MotionSegmentType::Linear,
                 },
                 MotionSegment {
@@ -380,7 +414,7 @@ mod tests {
                     segment_type: MotionSegmentType::Bezier,
                 },
                 MotionSegment {
-                    base_point_index: 7,
+                    base_point_index: 6,
                     segment_type: MotionSegmentType::Linear,
                 },
                 MotionSegment {

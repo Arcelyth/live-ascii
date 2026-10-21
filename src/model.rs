@@ -31,7 +31,12 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(model: *mut CsmModel) -> Self {
+    /// Wraps a native Cubism model.
+    ///
+    /// # Safety
+    /// `model` must point to an initialized Cubism model whose backing allocation
+    /// remains valid and exclusively accessed for the lifetime of this wrapper.
+    pub unsafe fn new(model: *mut CsmModel) -> Self {
         unsafe {
             assert!(!model.is_null(), "csmModel pointer cannot be null");
 

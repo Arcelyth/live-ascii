@@ -7,6 +7,10 @@ pub struct MotionQueueEntry {
     pub id: usize,
     pub auto_delete: bool,
     pub motion: Box<dyn ACubismMotion>,
+    pub state: MotionQueueState,
+}
+
+pub struct MotionQueueState {
     pub available: bool,
     pub finished: bool,
     pub started: bool,
@@ -26,28 +30,45 @@ impl MotionQueueEntry {
             id,
             auto_delete: false,
             motion,
-            available: true,
-            finished: false,
-            started: false,
-            start_time_seconds: -1.,
-            fade_in_start_time_seconds: 0.,
-            end_time_seconds: -1.,
-            state_time_seconds: 0.,
-            state_weight: 0.,
-            last_event_check_seconds: 0.,
-            fade_out_seconds: 0.,
-            is_triggered_fade_out: false,
+            state: MotionQueueState {
+                available: true,
+                finished: false,
+                started: false,
+                start_time_seconds: -1.,
+                fade_in_start_time_seconds: 0.,
+                end_time_seconds: -1.,
+                state_time_seconds: 0.,
+                state_weight: 0.,
+                last_event_check_seconds: 0.,
+                fade_out_seconds: 0.,
+                is_triggered_fade_out: false,
+            },
         }
     }
+}
 
+impl std::ops::Deref for MotionQueueEntry {
+    type Target = MotionQueueState;
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl std::ops::DerefMut for MotionQueueEntry {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
+}
+
+impl MotionQueueState {
     pub fn set_fade_out(&mut self, fade_out_s: f32) {
         self.fade_out_seconds = fade_out_s;
         self.is_triggered_fade_out = true;
     }
 
     pub fn start_fade_out(&mut self, fade_out_s: f32, user_time_s: f32) {
-        let new_end_time_s = user_time_s + fade_out_s;
-        self.is_triggered_fade_out = true;
+        let new_end_time_s = user_time_s + fade_out_s.max(0.0);
+        self.is_triggered_fade_out = false;
         if self.end_time_seconds < 0. || new_end_time_s < self.end_time_seconds {
             self.end_time_seconds = new_end_time_s;
         }
@@ -92,7 +113,8 @@ impl MotionQueueManager {
         auto_delete: bool,
     ) -> usize {
         for entry in &mut self.motions {
-            entry.set_fade_out(entry.motion.base().fade_out_seconds);
+            let fade = entry.motion.base().fade_out_seconds;
+            entry.set_fade_out(fade);
         }
         let mut m_entry = MotionQueueEntry::new(Box::new(motion), self.id_counter);
         self.id_counter += 1;
@@ -107,12 +129,14 @@ impl MotionQueueManager {
 
         let mut remove_items = vec![];
         for (i, entry) in self.motions.iter_mut().enumerate() {
-            let entry_ptr = entry as *mut MotionQueueEntry;
-            unsafe {
+            if entry.is_triggered_fade_out {
                 entry
-                    .motion
-                    .update_parameters(model, &mut *entry_ptr, user_time_s);
+                    .state
+                    .start_fade_out(entry.state.fade_out_seconds, user_time_s);
             }
+            entry
+                .motion
+                .update_parameters(model, &mut entry.state, user_time_s);
             updated = true;
 
             let before_s = entry.last_event_check_seconds - entry.start_time_seconds;
@@ -130,10 +154,6 @@ impl MotionQueueManager {
 
             if entry.finished {
                 remove_items.push(i);
-            } else {
-                if entry.is_triggered_fade_out {
-                    entry.start_fade_out(entry.fade_out_seconds, user_time_s);
-                }
             }
         }
 

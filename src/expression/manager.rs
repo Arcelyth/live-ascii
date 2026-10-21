@@ -39,11 +39,16 @@ impl ExpressionManager {
 
         for i in 0..self.qm.motions.len() {
             let motion_entry = &mut self.qm.motions[i];
-            let qe_ptr = motion_entry as *mut MotionQueueEntry;
-
-            unsafe {
-                let exp_motion = (*qe_ptr).motion.to_exp_motion_mut().unwrap();
-                let qe = &mut *qe_ptr;
+            {
+                let MotionQueueEntry {
+                    motion, state: qe, ..
+                } = motion_entry;
+                let Some(exp_motion) = motion.to_exp_motion_mut() else {
+                    continue;
+                };
+                if !qe.available || qe.finished {
+                    continue;
+                }
 
                 if qe.available {
                     for param in &exp_motion.params {
@@ -58,10 +63,13 @@ impl ExpressionManager {
                     }
                 }
 
+                if qe.is_triggered_fade_out {
+                    qe.start_fade_out(qe.fade_out_seconds, user_time);
+                }
                 exp_motion.setup_motion_queue_entry(qe, user_time);
 
                 let fade_weight = exp_motion.update_fade_weight(qe, user_time);
-                self.fade_weights[expression_index] = fade_weight;
+                self.fade_weights[i] = fade_weight;
 
                 exp_motion.cal_exp_params(
                     model,
@@ -75,25 +83,25 @@ impl ExpressionManager {
                 expression_weight += if fade_in_time <= 0.0 {
                     1.0
                 } else {
-                    let t = (user_time - motion_entry.fade_in_start_time_seconds) / fade_in_time;
+                    let t = (user_time - qe.fade_in_start_time_seconds) / fade_in_time;
                     0.5 - 0.5 * ((t.clamp(0.0, 1.0) * std::f32::consts::PI).cos())
                 };
 
-                if motion_entry.is_triggered_fade_out {
-                    motion_entry.start_fade_out(motion_entry.fade_out_seconds, user_time);
+                if qe.end_time_seconds >= 0.0 && user_time >= qe.end_time_seconds {
+                    qe.finished = true;
                 }
                 updated = true;
                 expression_index += 1;
             }
         }
 
-        if self.qm.motions.len() > 1 {
-            let latest_weight = self.fade_weights[self.qm.motions.len() - 1];
-            if latest_weight >= 1.0 {
-                self.qm.motions.drain(0..self.qm.motions.len() - 1);
-                self.fade_weights.drain(0..self.fade_weights.len() - 1);
+        for i in (0..self.qm.motions.len()).rev() {
+            if self.qm.motions[i].finished {
+                self.qm.motions.remove(i);
+                self.fade_weights.remove(i);
             }
         }
+        self.fade_weights.truncate(self.qm.motions.len());
 
         let final_weight = expression_weight.min(1.0);
 

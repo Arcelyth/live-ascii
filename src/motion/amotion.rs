@@ -17,13 +17,13 @@ pub trait ACubismMotion {
 
     fn base(&self) -> &MotionBase;
     fn base_mut(&mut self) -> &mut MotionBase;
-    fn update_parameters(&mut self, model: &mut Model, qe: &mut MotionQueueEntry, user_time_s: f32);
-    fn update_fade_weight(&self, entry: &mut MotionQueueEntry, user_time: f32) -> f32;
+    fn update_parameters(&mut self, model: &mut Model, qe: &mut MotionQueueState, user_time_s: f32);
+    fn update_fade_weight(&self, entry: &mut MotionQueueState, user_time: f32) -> f32;
     fn get_duration(&self) -> f32 {
         -1.
     }
-    fn adjust_end_time(&self, qe: &mut MotionQueueEntry);
-    fn setup_motion_queue_entry(&self, entry: &mut MotionQueueEntry, user_time: f32);
+    fn adjust_end_time(&self, qe: &mut MotionQueueState);
+    fn setup_motion_queue_entry(&self, entry: &mut MotionQueueState, user_time: f32);
     fn get_fired_events(
         &mut self,
         before_check_time_seconds: f32,
@@ -73,7 +73,9 @@ pub struct CubismMotion {
 
 impl CubismMotion {
     pub fn new(motion_data: MotionData) -> Self {
-        let base = MotionBase::new();
+        let mut base = MotionBase::new();
+        base.is_loop = motion_data.loop_;
+        base.previous_loop_state = base.is_loop;
         Self {
             base,
             source_frame_rate: motion_data.fps,
@@ -101,7 +103,7 @@ impl CubismMotion {
         model: &mut Model,
         user_time_seconds: f32,
         fade_weight: f32,
-        motion_queue_e: &mut MotionQueueEntry,
+        motion_queue_e: &mut MotionQueueState,
     ) {
         if let MotionBehavior::MotionBehaviorV2 = self.motion_behavior {
             if self.base.previous_loop_state != self.base.is_loop {
@@ -244,11 +246,7 @@ impl CubismMotion {
                     model.set_parameter_value(parameter_index, final_value, 1.);
                 }
                 CurveTargetType::PartOpacity => {
-                    //                    let part_index = model.get_part_index(&curve.id);
-                    //                    model.set_part_opacity(part_index, value);
-                    let param_index = model.get_parameter_index(&curve.id);
-
-                    model.set_parameter_value(param_index, value, 1.0);
+                    model.set_part_opacity_by_id(&curve.id, value);
                 }
             }
         }
@@ -300,7 +298,7 @@ impl CubismMotion {
         &mut self,
         user_time_seconds: f32,
         time: f32,
-        motion_queue_e: &mut MotionQueueEntry,
+        motion_queue_e: &mut MotionQueueState,
     ) {
         match self.motion_behavior {
             MotionBehavior::MotionBehaviorV1 => {
@@ -395,7 +393,7 @@ impl ACubismMotion for CubismMotion {
     fn update_parameters(
         &mut self,
         model: &mut Model,
-        qe: &mut MotionQueueEntry,
+        qe: &mut MotionQueueState,
         user_time_s: f32,
     ) {
         if !qe.available || qe.finished {
@@ -404,7 +402,7 @@ impl ACubismMotion for CubismMotion {
         self.setup_motion_queue_entry(qe, user_time_s);
         let fade_weight = self.update_fade_weight(qe, user_time_s);
         self.do_update_parameters(model, user_time_s, fade_weight, qe);
-        if qe.end_time_seconds > 0. && qe.end_time_seconds < user_time_s {
+        if qe.end_time_seconds >= 0. && qe.end_time_seconds <= user_time_s {
             qe.finished = true;
         }
     }
@@ -417,7 +415,7 @@ impl ACubismMotion for CubismMotion {
         }
     }
 
-    fn adjust_end_time(&self, qe: &mut MotionQueueEntry) {
+    fn adjust_end_time(&self, qe: &mut MotionQueueState) {
         let duration = self.get_duration();
         qe.end_time_seconds = if duration <= 0. {
             -1.
@@ -426,7 +424,7 @@ impl ACubismMotion for CubismMotion {
         };
     }
 
-    fn setup_motion_queue_entry(&self, entry: &mut MotionQueueEntry, user_time: f32) {
+    fn setup_motion_queue_entry(&self, entry: &mut MotionQueueState, user_time: f32) {
         if !entry.available || entry.finished || entry.started {
             return;
         }
@@ -440,7 +438,7 @@ impl ACubismMotion for CubismMotion {
         }
     }
 
-    fn update_fade_weight(&self, entry: &mut MotionQueueEntry, user_time: f32) -> f32 {
+    fn update_fade_weight(&self, entry: &mut MotionQueueState, user_time: f32) -> f32 {
         let mut fade_weight = self.base.weight;
 
         let fade_in = if self.base.fade_in_seconds <= 0.0 {
@@ -497,7 +495,10 @@ pub fn correct_end_point(
     let first_point = &motion_data.points[first_point_index];
     let last_point = &motion_data.points[last_point_index];
 
-    let t = (time - last_point.time) / (end_time - last_point.time);
+    if end_time <= last_point.time {
+        return last_point.value;
+    }
+    let t = ((time - last_point.time) / (end_time - last_point.time)).clamp(0.0, 1.0);
     last_point.value + (first_point.value - last_point.value) * t
 }
 
@@ -565,6 +566,9 @@ fn evaluate_segment(segment: &MotionSegment, points: &[SegmentPoint], time: f32)
 }
 
 pub fn linear_evaluate(p0: SegmentPoint, p1: SegmentPoint, time: f32) -> f32 {
+    if p1.time <= p0.time {
+        return p1.value;
+    }
     let t = ((time - p0.time) / (p1.time - p0.time)).clamp(0.0, 1.0);
     p0.value + ((p1.value - p0.value) * t)
 }

@@ -35,6 +35,16 @@ use crate::shader::*;
 use crate::ui::{popup::*, *};
 use crate::utils::*;
 
+// Restore terminal state on normal exit, I/O errors, and unwinding.
+struct TerminalGuard;
+
+impl Drop for TerminalGuard {
+    fn drop(&mut self) {
+        let _ = execute!(stdout(), cursor::Show);
+        let _ = terminal::disable_raw_mode();
+    }
+}
+
 pub struct Renderer {
     pub count: usize,
     pub model: Model,
@@ -60,12 +70,17 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(
+    /// Creates a renderer for a native Cubism model.
+    ///
+    /// # Safety
+    /// `model_ptr` must refer to an initialized model with valid backing memory
+    /// that remains exclusively accessible throughout the renderer's lifetime.
+    pub unsafe fn new(
         model_ptr: *mut CsmModel,
         textures: Vec<DynamicImage>,
         shader_manager: ShaderManager,
     ) -> Self {
-        let model = Model::new(model_ptr);
+        let model = unsafe { Model::new(model_ptr) };
         unsafe {
             Self {
                 model,
@@ -103,6 +118,7 @@ impl Renderer {
         physics: &mut Option<Physics>,
     ) -> Result<(), Box<dyn Error>> {
         terminal::enable_raw_mode()?;
+        let _terminal_guard = TerminalGuard;
         execute!(stdout(), cursor::Hide)?;
         // terminal
         let backend = CrosstermBackend::new(stdout());
@@ -162,8 +178,14 @@ impl Renderer {
                                     KeyCode::Up => context.motion_list_state.select_previous(),
                                     KeyCode::Down => context.motion_list_state.select_next(),
                                     KeyCode::Enter => {
-                                        if let Some(idx) = context.motion_list_state.selected() {
-                                            let file = model_setting.get_all_motion_names()[idx];
+                                        if let Some(file) =
+                                            context.motion_list_state.selected().and_then(|idx| {
+                                                model_setting
+                                                    .get_all_motion_names()
+                                                    .get(idx)
+                                                    .copied()
+                                            })
+                                        {
                                             if let Ok(motion_data) =
                                                 MotionData::from_path(&context.base_dir, file)
                                             {
@@ -426,6 +448,10 @@ impl Renderer {
             context.update()?;
 
             context.clear();
+            if context.width == 0 || context.height == 0 {
+                std::thread::sleep(target_frame_time);
+                continue;
+            }
             let needed = (context.width as usize) * (context.height as usize);
             if mask_buffer.len() != needed {
                 mask_buffer.resize(needed, false);
@@ -489,7 +515,7 @@ impl Renderer {
                     if !is_visible {
                         continue;
                     }
-                    let opacity = *opacities.add(drawable_idx);
+                    let opacity = *opacities.add(drawable_idx) * self.model.model_opacity;
                     if opacity <= 0.001 {
                         continue;
                     }
@@ -573,6 +599,9 @@ impl Renderer {
                     let current_texture = &self.textures[tex_idx];
                     let img_w = current_texture.width();
                     let img_h = current_texture.height();
+                    if img_w == 0 || img_h == 0 {
+                        continue;
+                    }
 
                     let index_count = *self.index_counts.add(drawable_idx) as usize;
                     let indices_ptr = *self.indices.add(drawable_idx);
@@ -688,6 +717,9 @@ impl Renderer {
                                                             + 0.587 * (g as f32)
                                                             + 0.114 * (b as f32);
 
+                                                        if chars.is_empty() {
+                                                            continue;
+                                                        }
                                                         let char_index = (luminance / 255.0
                                                             * (chars.len() - 1) as f32)
                                                             .round()
@@ -697,7 +729,9 @@ impl Renderer {
                                                         chars[char_index]
                                                     }
                                                     Shader::Text(_) => {
-                                                        if let Some(ref chars) = text_chars {
+                                                        if let Some(ref chars) = text_chars
+                                                            && !chars.is_empty()
+                                                        {
                                                             let text_idx = (y as usize
                                                                 * context.width as usize
                                                                 + x as usize)
@@ -734,13 +768,13 @@ impl Renderer {
                     let display_width = std::cmp::min(len + 2, msg.max_width as usize);
 
                     let content_width = display_width.saturating_sub(2).max(1);
-                    let row_num = 2 + (len + content_width - 1) / content_width;
+                    let row_num = 2 + len.div_ceil(content_width);
 
                     let row_num = std::cmp::min(row_num, msg.max_height as usize);
 
                     context.popups.push_or_update(Popup::new_with_id(
                         msg.content,
-                        Duration::from_secs_f64(msg.duration),
+                        Duration::try_from_secs_f64(msg.duration).unwrap_or(Duration::from_secs(3)),
                         (display_width, row_num),
                         Color::Rgb(msg.color.0, msg.color.1, msg.color.2),
                         msg.id,

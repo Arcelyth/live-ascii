@@ -41,7 +41,7 @@ impl PartData {
         for link_item in &mut self.link {
             link_item.part_index = model.get_part_index(&link_item.part_id);
             link_item.param_index = model.get_parameter_index(&link_item.part_id);
-            model.set_parameter_value(self.param_index, 1.0, 1.0);
+            model.set_parameter_value(link_item.param_index, 1.0, 1.0);
         }
     }
 }
@@ -171,7 +171,7 @@ impl Pose {
         }
 
         if visible_part_index < 0 {
-            visible_part_index = 0;
+            visible_part_index = begin_index as i32;
             new_opacity = 1.0;
         }
 
